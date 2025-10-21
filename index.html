@@ -24,6 +24,13 @@
                     <span id="spacing-value">10px</span>
                 </div>
 
+                <!-- Contrôle de taille d'image -->
+                <div class="control-group">
+                    <label for="image-size">🔍 Taille:</label>
+                    <input type="range" id="image-size" min="50" max="150" value="100" class="slider">
+                    <span id="image-size-value">100%</span>
+                </div>
+
                 <!-- Sélecteur de thème -->
                 <div class="control-group">
                     <label for="theme">🎨 Thème:</label>
@@ -32,6 +39,7 @@
                         <option value="light">Lumineux</option>
                         <option value="forest">Forêt</option>
                         <option value="night">Nuit</option>
+                        <option value="autumn">Automne</option>
                     </select>
                 </div>
 
@@ -51,9 +59,13 @@
         <main class="main-content">
             <!-- Zone d'importation -->
             <div class="import-zone" id="import-zone">
-                <div class="import-card">
-                    <div class="plus-icon">+</div>
-                    <p class="import-text">Cliquez pour importer le manga</p>
+                <div class="import-card" id="import-folder">
+                    <div class="plus-icon">📁</div>
+                    <p class="import-text">Importer un dossier</p>
+                </div>
+                <div class="import-card" id="import-images">
+                    <div class="plus-icon">🖼️</div>
+                    <p class="import-text">Importer des images</p>
                 </div>
             </div>
 

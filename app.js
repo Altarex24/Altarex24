@@ -4,6 +4,7 @@ const { ipcRenderer } = require('electron');
 const appState = {
     currentView: 'tomes',
     spacing: 10,
+    imageSize: 100,
     theme: 'dark',
     manga: null,
     currentTomeIndex: 0,
@@ -29,9 +30,13 @@ function initializeEventListeners() {
         });
     });
 
-    // Zone d'importation
-    const importZone = document.getElementById('import-zone');
-    importZone.addEventListener('click', handleImport);
+    // Zone d'importation - Dossier
+    const importFolder = document.getElementById('import-folder');
+    importFolder.addEventListener('click', handleImportFolder);
+
+    // Zone d'importation - Images
+    const importImages = document.getElementById('import-images');
+    importImages.addEventListener('click', handleImportImages);
 
     // Contrôle d'espacement
     const spacingSlider = document.getElementById('spacing');
@@ -42,11 +47,33 @@ function initializeEventListeners() {
         updateImageSpacing();
     });
 
+    // Contrôle de taille d'image
+    const imageSizeSlider = document.getElementById('image-size');
+    const imageSizeValue = document.getElementById('image-size-value');
+    imageSizeSlider.addEventListener('input', (e) => {
+        appState.imageSize = e.target.value;
+        imageSizeValue.textContent = `${e.target.value}%`;
+        updateImageSize();
+    });
+
     // Sélecteur de thème
     const themeSelect = document.getElementById('theme');
     themeSelect.addEventListener('change', (e) => {
         appState.theme = e.target.value;
         applyTheme(e.target.value);
+    });
+
+    // Raccourcis clavier Ctrl+/- pour la taille
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                adjustImageSize(10);
+            } else if (e.key === '-' || e.key === '_') {
+                e.preventDefault();
+                adjustImageSize(-10);
+            }
+        }
     });
 
     // Bouton plein écran
@@ -108,7 +135,7 @@ function handleNavigation(view) {
 }
 
 // Gérer l'importation de dossier
-async function handleImport() {
+async function handleImportFolder() {
     try {
         const folderPath = await ipcRenderer.invoke('select-folder');
 
@@ -147,6 +174,60 @@ async function handleImport() {
     }
 }
 
+// Gérer l'importation d'images directes (Solution 5)
+async function handleImportImages() {
+    try {
+        const imagePaths = await ipcRenderer.invoke('select-images');
+
+        if (imagePaths && imagePaths.length > 0) {
+            showNotification(`${imagePaths.length} images sélectionnées`, 'info');
+
+            // Trier les images naturellement avec credits à la fin
+            const sortedImages = imagePaths.sort((a, b) => {
+                const aName = a.toLowerCase();
+                const bName = b.toLowerCase();
+
+                // Mettre credits/credi à la fin
+                if (aName.includes('credit') || aName.includes('credi')) return 1;
+                if (bName.includes('credit') || bName.includes('credi')) return -1;
+
+                return aName.localeCompare(bName, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            // Créer une structure de manga avec solution 5
+            appState.manga = {
+                solution: 5,
+                name: 'Images importées',
+                structure: {
+                    chapters: [{
+                        name: 'Chapitre',
+                        images: sortedImages
+                    }]
+                }
+            };
+
+            appState.currentTomeIndex = 0;
+            appState.currentTypeIndex = 0;
+            appState.currentChapterIndex = 0;
+
+            // Masquer la zone d'importation
+            document.getElementById('import-zone').style.display = 'none';
+            document.getElementById('manga-viewer').style.display = 'block';
+
+            // Mettre à jour la navigation
+            updateNavigationButtons();
+
+            // Afficher les images
+            displayCurrentChapter();
+
+            showNotification('Images importées!', 'success');
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'importation:', error);
+        showNotification('Erreur lors de l\'importation', 'error');
+    }
+}
+
 // Mettre à jour les boutons de navigation
 function updateNavigationButtons() {
     const navbar = document.querySelector('.navbar-left');
@@ -157,7 +238,7 @@ function updateNavigationButtons() {
 
     if (solution === 1) {
         // Solution 1: Afficher seulement le chapitre
-        const chapterBtn = createNavButton(appState.manga.structure.chapters[0].name, 'chapitres', true);
+        const chapterBtn = createNavButton(appState.manga.structure.chapters[0].name, 'chapitres', false);
         navbar.appendChild(chapterBtn);
     } else if (solution === 2) {
         // Solution 2: Volume et Chapitres
@@ -178,6 +259,10 @@ function updateNavigationButtons() {
         const chapterBtn = createNavButton('Chapitres', 'chapitres', true);
         navbar.appendChild(tomeBtn);
         navbar.appendChild(typeBtn);
+        navbar.appendChild(chapterBtn);
+    } else if (solution === 5) {
+        // Solution 5: Images directes - Afficher seulement le nom
+        const chapterBtn = createNavButton('Images importées', 'chapitres', false);
         navbar.appendChild(chapterBtn);
     }
 
@@ -230,7 +315,7 @@ function displayCurrentChapter() {
     const solution = appState.manga.solution;
     let images = [];
 
-    if (solution === 1) {
+    if (solution === 1 || solution === 5) {
         images = appState.manga.structure.chapters[0].images;
     } else if (solution === 2) {
         images = appState.manga.structure.chapters[appState.currentChapterIndex].images;
@@ -260,6 +345,7 @@ function displayImages(images) {
         img.src = imagePath;
         img.alt = `Page ${index + 1}`;
         img.className = 'manga-page';
+        img.style.width = `${appState.imageSize}%`;
 
         // Marquer la dernière image
         if (index === images.length - 1) {
@@ -270,11 +356,16 @@ function displayImages(images) {
         viewer.appendChild(imgWrapper);
     });
 
-    // Scroller en haut
-    document.querySelector('.main-content').scrollTop = 0;
-
     // Créer les boutons de navigation en bas
     createBottomNavigation();
+
+    // Scroller en haut APRÈS un court délai pour s'assurer que les images sont chargées
+    setTimeout(() => {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.scrollTop = 0;
+        }
+    }, 100);
 }
 
 // Créer les boutons de navigation en bas
@@ -605,10 +696,29 @@ function updateImageSpacing() {
     });
 }
 
+// Mettre à jour la taille des images
+function updateImageSize() {
+    const images = document.querySelectorAll('.manga-page');
+    images.forEach(img => {
+        img.style.width = `${appState.imageSize}%`;
+    });
+}
+
+// Ajuster la taille d'image avec les raccourcis
+function adjustImageSize(delta) {
+    let newSize = parseInt(appState.imageSize) + delta;
+    newSize = Math.max(50, Math.min(150, newSize)); // Limiter entre 50% et 150%
+
+    appState.imageSize = newSize;
+    document.getElementById('image-size').value = newSize;
+    document.getElementById('image-size-value').textContent = `${newSize}%`;
+    updateImageSize();
+}
+
 // Appliquer le thème
 function applyTheme(theme) {
     const body = document.body;
-    body.classList.remove('light-theme', 'forest-theme', 'night-theme');
+    body.classList.remove('light-theme', 'forest-theme', 'night-theme', 'autumn-theme');
 
     switch(theme) {
         case 'light':
@@ -619,6 +729,9 @@ function applyTheme(theme) {
             break;
         case 'night':
             body.classList.add('night-theme');
+            break;
+        case 'autumn':
+            body.classList.add('autumn-theme');
             break;
     }
 }

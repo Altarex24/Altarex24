@@ -54,6 +54,21 @@ ipcMain.handle('select-folder', async () => {
   return null;
 });
 
+// Gestionnaire pour ouvrir le dialogue de sélection de fichiers multiples
+ipcMain.handle('select-images', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths;
+  }
+  return null;
+});
+
 // Analyser la structure du dossier
 const fs = require('fs');
 

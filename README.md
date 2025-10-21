@@ -1,92 +1,208 @@
-# Manga Reader - Application Windows
+# 📖 Manga Reader - Application Windows
 
-Application de bureau stylée pour gérer et lire vos mangas sur Windows.
+Application de bureau stylée et complète pour gérer et lire vos mangas sur Windows.
 
-## Fonctionnalités
+![Logo](assets/logo.svg)
 
-### Interface Principale
-- **Design moderne** : Interface avec fond gris foncé élégant
-- **Bouton d'importation stylé** : Zone centrale avec effet de survol et animation
-- **4 thèmes disponibles** :
-  - 🌑 Sombre (par défaut)
-  - ☀️ Lumineux
-  - 🌲 Forêt
-  - 🌙 Nuit (complètement noir)
+## ✨ Fonctionnalités
 
-### Barre de Navigation
-- **Navigation** : Tomes, Type, Chapitres
-- **Contrôles** :
-  - 📏 Espacement entre les pages (slider)
-  - 🎨 Sélecteur de thème
-  - 🖥️ Mode plein écran
-  - ⚙️ Paramètres
+### 🎨 Interface Moderne
+- **Design élégant** avec animations fluides
+- **5 thèmes disponibles** :
+  - 🌑 **Sombre** (par défaut) - Gris foncé élégant
+  - ☀️ **Lumineux** - Clair et moderne
+  - 🌲 **Forêt** - Tons verts apaisants
+  - 🌙 **Nuit** - Complètement noir
+  - 🍂 **Automne** - Tons bruns chaleureux
 
-### Importation
-- Support des formats : CBZ, CBR, ZIP, RAR, PDF
-- Système de notification élégant
-- Animation lors de l'importation
+### 📁 Importation Intelligente (5 Solutions)
 
-## Installation
+L'application détecte automatiquement la structure de vos mangas :
+
+**Solution 1** - Images directes dans un dossier :
+```
+MonManga/
+  ├── page1.jpg
+  ├── page2.jpg
+  └── page3.jpg
+```
+
+**Solution 2** - Dossier/Chapitres/Images :
+```
+MonManga/
+  ├── Chapitre 1/
+  │   ├── page1.jpg
+  └── Chapitre 2/
+      ├── page1.jpg
+```
+
+**Solution 3** - Dossier/Tomes/Chapitres/Images :
+```
+MonManga/
+  ├── Tome 1/
+  │   ├── Chapitre 1/
+  │   └── Chapitre 2/
+  └── Tome 2/
+```
+
+**Solution 4** - Dossier/Tomes/Types/Chapitres/Images :
+```
+MonManga/
+  ├── Tome 1/
+  │   ├── Principal/
+  │   │   └── Chapitre 1/
+  │   └── Bonus/
+  └── Tome 2/
+```
+
+**Solution 5** - Importation directe d'images (NOUVEAU !) :
+- Sélectionnez plusieurs images directement
+- Tri automatique avec credits à la fin
+
+### 🎮 Contrôles Avancés
+
+**Barre supérieure :**
+- 📏 **Espacement** : Ajustez l'espace entre les pages (0-50px)
+- 🔍 **Taille d'image** : Changez la taille des pages (50-150%)
+- 🎨 **Sélecteur de thème**
+- 🖥️ **Mode plein écran**
+- ⚙️ **Paramètres**
+
+**Raccourcis clavier :**
+- `Ctrl +` ou `Ctrl =` : Augmenter la taille des images
+- `Ctrl -` : Réduire la taille des images
+
+### 🧭 Navigation Intelligente
+
+- **Navigation dynamique** selon la structure détectée
+- **Boutons en bas de page** :
+  - ⬅️ Chapitre précédent
+  - ⬆️ Remonter en haut
+  - ➡️ Chapitre suivant
+- **Bouton flottant** de retour en haut (apparaît après 300px de scroll, caché en plein écran)
+- **Passage automatique** au tome/type suivant en fin de chapitre
+- **Modals de sélection** pour naviguer rapidement
+
+### 🔄 Tri Automatique
+- Tri naturel des fichiers (1, 2, 10 au lieu de 1, 10, 2)
+- Pages "credits" ou "credi" toujours placées en dernier
+
+## 📥 Installation
 
 ### Prérequis
-- Node.js (version 14 ou supérieure)
-- npm ou yarn
+- [Node.js](https://nodejs.org/) (version 14 ou supérieure)
+- npm (inclus avec Node.js)
 
 ### Étapes d'installation
 
-1. Installer les dépendances :
+1. **Cloner le dépôt** :
+```bash
+git clone https://github.com/Altarex24/Altarex24.git
+cd Altarex24
+git checkout claude/windows-office-app-011CULRDeozaRVruXcGHNK5L
+```
+
+2. **Installer les dépendances** :
 ```bash
 npm install
 ```
 
-2. Lancer l'application :
+3. **Lancer l'application** :
 ```bash
 npm start
 ```
 
-## Utilisation
+> 💡 **Astuce** : Consultez le fichier [INSTALLATION.txt](INSTALLATION.txt) pour un guide détaillé.
+
+## 🚀 Utilisation
+
+### Importer un manga
 
 1. **Lancer l'application** avec `npm start`
-2. **Importer un manga** : Cliquez sur le grand bouton "+" au centre
-3. **Changer le thème** : Utilisez le sélecteur dans la barre supérieure droite
-4. **Ajuster l'espacement** : Utilisez le slider pour modifier l'espace entre les éléments
-5. **Passer en plein écran** : Cliquez sur le bouton 🖥️
+2. **Choisir le mode d'importation** :
+   - 📁 **Importer un dossier** : Pour une structure complète de manga
+   - 🖼️ **Importer des images** : Pour sélectionner des images individuelles
+3. Sélectionnez votre manga
+4. L'application analyse automatiquement et affiche les pages !
 
-## Structure du Projet
+### Lire un manga
+
+- **Scroller** pour lire (lecture verticale)
+- **Cliquer sur les boutons** en haut pour changer de tome/type/chapitre
+- **Utiliser les boutons** en bas de la dernière page pour naviguer
+- **Ajuster la taille** avec Ctrl+/- ou le slider
+- **Changer le thème** selon votre préférence
+
+### Personnaliser l'affichage
+
+- **Espacement** : 0-50px entre les pages
+- **Taille** : 50-150% de la largeur
+- **Thème** : 5 thèmes au choix
+- **Plein écran** : Pour une immersion totale
+
+## 📂 Structure du Projet
 
 ```
-manga-reader/
-├── main.js           # Point d'entrée Electron
-├── index.html        # Interface HTML
-├── styles.css        # Styles et thèmes
-├── app.js            # Logique JavaScript
-├── package.json      # Configuration npm
-└── README.md         # Documentation
+Altarex24/
+├── assets/
+│   └── logo.svg          # Logo de l'application
+├── main.js               # Point d'entrée Electron
+├── index.html            # Interface HTML
+├── styles.css            # Styles et thèmes
+├── app.js                # Logique JavaScript
+├── package.json          # Configuration npm
+├── INSTALLATION.txt      # Guide d'installation détaillé
+└── README.md             # Documentation
 ```
 
-## Développement
+## 🛠️ Développement
 
 ### Activer les DevTools
-Décommentez la ligne suivante dans `main.js` :
+Décommentez cette ligne dans `main.js` :
 ```javascript
-// mainWindow.webContents.openDevTools();
+mainWindow.webContents.openDevTools();
 ```
 
-## Prochaines Étapes
-
-- Implémenter la lecture de manga
-- Ajouter la gestion des chapitres
-- Créer un système de favoris
-- Ajouter plus de paramètres personnalisables
-- Implémenter la recherche et les filtres
-
-## Technologies Utilisées
+### Technologies Utilisées
 
 - **Electron** : Framework pour applications desktop
-- **JavaScript** : Logique de l'application
-- **CSS3** : Styles modernes avec animations
-- **Node.js** : Runtime JavaScript
+- **JavaScript ES6+** : Logique de l'application
+- **CSS3** : Styles modernes avec variables CSS et animations
+- **Node.js** : Système de fichiers et analyse de structure
 
-## Licence
+## 🎯 Fonctionnalités Clés
 
-MIT
+✅ Détection automatique de la structure
+✅ 5 solutions d'importation différentes
+✅ Tri naturel avec credits à la fin
+✅ Navigation intelligente entre chapitres/tomes/types
+✅ Raccourcis clavier Ctrl+/-
+✅ 5 thèmes magnifiques
+✅ Ajustement de la taille et de l'espacement
+✅ Bouton de retour en haut flottant
+✅ Mode plein écran
+✅ Lecture verticale fluide
+
+## 📝 Notes
+
+- **Formats d'images supportés** : JPG, JPEG, PNG, GIF, BMP, WEBP
+- **Lecture optimisée** : Les images sont chargées efficacement
+- **Scroll intelligent** : Position toujours réinitialisée en haut lors du changement de chapitre
+
+## 🔮 Améliorations Futures
+
+- [ ] Système de favoris
+- [ ] Historique de lecture
+- [ ] Marque-pages
+- [ ] Mode de lecture horizontal
+- [ ] Zoom avec la molette
+- [ ] Recherche dans la bibliothèque
+- [ ] Import de fichiers CBZ/CBR
+
+## 📄 Licence
+
+MIT - Libre d'utilisation et de modification
+
+---
+
+**Développé avec ❤️ et Claude Code**
