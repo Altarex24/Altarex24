@@ -428,11 +428,8 @@ function displayImages(images) {
     // Créer les boutons de navigation en bas
     createBottomNavigation();
 
-    // Scroller tout en haut
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-        mainContent.scrollTop = 0;
-    }
+    // Scroller tout en haut - utilise window comme dans l'exemple HTML
+    window.scrollTo(0, 0);
 }
 
 // Créer les boutons de navigation en bas
@@ -456,7 +453,7 @@ function createBottomNavigation() {
     topBtn.className = 'nav-bottom-btn';
     topBtn.innerHTML = '⬆️ Remonter';
     topBtn.onclick = () => {
-        document.querySelector('.main-content').scrollTop = 0;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const nextBtn = document.createElement('button');

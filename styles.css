@@ -74,14 +74,13 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    overflow: hidden;
-    height: 100vh;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 #app {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 /* Barre de navigation */
@@ -233,16 +232,16 @@ body.fullscreen-mode .navbar-left {
 
 /* Contenu principal */
 .main-content {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-height: calc(100vh - 60px);
 }
 
 body.fullscreen-mode .main-content {
+    margin-top: 0;
+    margin-bottom: 0;
     padding: 0;
 }
 
@@ -365,11 +364,10 @@ body.fullscreen-mode .main-content {
     max-width: 100%;
     height: auto;
     display: block;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
-                0 4px 12px rgba(0, 0, 0, 0.2),
-                0 2px 6px rgba(0, 0, 0, 0.15);
-    transition: box-shadow 0.3s ease;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s;
+    transform-origin: center center;
     animation: fadeIn 0.5s ease-out;
 }
 
