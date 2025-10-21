@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manga Reader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Barre de navigation supérieure -->
+        <nav class="navbar">
+            <div class="navbar-left">
+                <button class="nav-btn active" data-view="tomes">Tomes</button>
+                <button class="nav-btn" data-view="type">Type</button>
+                <button class="nav-btn" data-view="chapitres">Chapitres</button>
+            </div>
+
+            <div class="navbar-right">
+                <!-- Contrôle d'espacement -->
+                <div class="control-group">
+                    <label for="spacing">📏 Espacement:</label>
+                    <input type="range" id="spacing" min="0" max="50" value="10" class="slider">
+                    <span id="spacing-value">10px</span>
+                </div>
+
+                <!-- Sélecteur de thème -->
+                <div class="control-group">
+                    <label for="theme">🎨 Thème:</label>
+                    <select id="theme" class="theme-select">
+                        <option value="dark">Sombre</option>
+                        <option value="light">Lumineux</option>
+                        <option value="forest">Forêt</option>
+                        <option value="night">Nuit</option>
+                    </select>
+                </div>
+
+                <!-- Bouton plein écran -->
+                <button class="icon-btn" id="fullscreen-btn" title="Plein écran">
+                    🖥️
+                </button>
+
+                <!-- Bouton paramètres -->
+                <button class="icon-btn" id="settings-btn" title="Paramètres">
+                    ⚙️
+                </button>
+            </div>
+        </nav>
+
+        <!-- Contenu principal -->
+        <main class="main-content">
+            <!-- Zone d'importation -->
+            <div class="import-zone" id="import-zone">
+                <div class="import-card">
+                    <div class="plus-icon">+</div>
+                    <p class="import-text">Cliquez pour importer le manga</p>
+                </div>
+            </div>
+
+            <!-- Zone de grille de mangas (sera affichée après import) -->
+            <div class="manga-grid" id="manga-grid" style="display: none;">
+                <!-- Les mangas importés apparaîtront ici -->
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

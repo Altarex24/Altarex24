@@ -1,0 +1,17 @@
+{
+  "name": "manga-reader",
+  "version": "1.0.0",
+  "description": "Application de lecture de manga pour Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "keywords": ["manga", "reader", "electron"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^27.0.0"
+  },
+  "devDependencies": {}
+}
