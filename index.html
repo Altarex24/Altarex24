@@ -43,6 +43,11 @@
                     </select>
                 </div>
 
+                <!-- Bouton Importer à nouveau -->
+                <button class="icon-btn" id="reimport-btn" title="Importer à nouveau" style="display: none;">
+                    🔄
+                </button>
+
                 <!-- Bouton plein écran -->
                 <button class="icon-btn" id="fullscreen-btn" title="Plein écran">
                     🖥️
@@ -59,13 +64,9 @@
         <main class="main-content">
             <!-- Zone d'importation -->
             <div class="import-zone" id="import-zone">
-                <div class="import-card" id="import-folder">
-                    <div class="plus-icon">📁</div>
-                    <p class="import-text">Importer un dossier</p>
-                </div>
-                <div class="import-card" id="import-images">
-                    <div class="plus-icon">🖼️</div>
-                    <p class="import-text">Importer des images</p>
+                <div class="import-card" id="import-btn">
+                    <div class="plus-icon">+</div>
+                    <p class="import-text">Cliquez pour importer</p>
                 </div>
             </div>
 

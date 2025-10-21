@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════════════════
+   📌 CRÉER UN RACCOURCI SUR LE BUREAU
+═══════════════════════════════════════════════════════════════
+
+🎯 MÉTHODE 1 : Script Automatique (RECOMMANDÉ)
+───────────────────────────────────────────────────────────────
+
+1. Double-cliquez sur le fichier : create-shortcut.bat
+2. Suivez les instructions à l'écran
+3. Un raccourci "Manga Reader" sera créé sur votre bureau
+4. Double-cliquez sur le raccourci pour lancer l'application !
+
+───────────────────────────────────────────────────────────────
+
+🎯 MÉTHODE 2 : Manuelle
+───────────────────────────────────────────────────────────────
+
+1. Faites un clic droit sur le fichier "start.bat"
+2. Sélectionnez "Créer un raccourci"
+3. Déplacez le raccourci sur votre bureau
+4. (Optionnel) Faites un clic droit sur le raccourci > Propriétés
+   - Changez le nom en "Manga Reader"
+   - Cliquez sur "Changer l'icône..." si vous voulez personnaliser
+
+───────────────────────────────────────────────────────────────
+
+💡 ASTUCE
+───────────────────────────────────────────────────────────────
+
+Une fois le raccourci créé, vous pourrez lancer l'application
+en un seul clic depuis votre bureau !
+
+Si l'application ne démarre pas, vérifiez que :
+- Node.js est installé
+- Vous avez exécuté "npm install" au moins une fois
+- Vous êtes dans le bon dossier
+
+═══════════════════════════════════════════════════════════════

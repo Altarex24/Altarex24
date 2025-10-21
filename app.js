@@ -30,13 +30,17 @@ function initializeEventListeners() {
         });
     });
 
-    // Zone d'importation - Dossier
-    const importFolder = document.getElementById('import-folder');
-    importFolder.addEventListener('click', handleImportFolder);
+    // Zone d'importation
+    const importBtn = document.getElementById('import-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', showImportOptions);
+    }
 
-    // Zone d'importation - Images
-    const importImages = document.getElementById('import-images');
-    importImages.addEventListener('click', handleImportImages);
+    // Bouton Importer à nouveau
+    const reimportBtn = document.getElementById('reimport-btn');
+    if (reimportBtn) {
+        reimportBtn.addEventListener('click', handleReimport);
+    }
 
     // Contrôle d'espacement
     const spacingSlider = document.getElementById('spacing');
@@ -81,7 +85,16 @@ function initializeEventListeners() {
     fullscreenBtn.addEventListener('click', () => {
         appState.isFullscreen = !appState.isFullscreen;
         ipcRenderer.send('toggle-fullscreen');
+
+        // Ajouter/retirer la classe pour l'animation
+        if (appState.isFullscreen) {
+            document.body.classList.add('fullscreen-mode');
+        } else {
+            document.body.classList.remove('fullscreen-mode');
+        }
+
         updateScrollButton();
+        updateReimportButton();
     });
 
     // Bouton paramètres
@@ -167,6 +180,7 @@ async function handleImportFolder() {
             displayCurrentChapter();
 
             showNotification(`Manga importé! (Solution ${analysis.solution})`, 'success');
+            updateReimportButton();
         }
     } catch (error) {
         console.error('Erreur lors de l\'importation:', error);
@@ -221,10 +235,64 @@ async function handleImportImages() {
             displayCurrentChapter();
 
             showNotification('Images importées!', 'success');
+            updateReimportButton();
         }
     } catch (error) {
         console.error('Erreur lors de l\'importation:', error);
         showNotification('Erreur lors de l\'importation', 'error');
+    }
+}
+
+// Afficher les options d'importation
+function showImportOptions() {
+    const modal = createModal('Choisissez le type d\'importation', [
+        {
+            text: '📁 Importer un dossier de manga',
+            onClick: () => {
+                closeModal();
+                handleImportFolder();
+            }
+        },
+        {
+            text: '🖼️ Importer des images',
+            onClick: () => {
+                closeModal();
+                handleImportImages();
+            }
+        }
+    ]);
+
+    document.body.appendChild(modal);
+}
+
+// Gérer la réimportation
+function handleReimport() {
+    // Réinitialiser l'état
+    appState.manga = null;
+    appState.currentTomeIndex = 0;
+    appState.currentTypeIndex = 0;
+    appState.currentChapterIndex = 0;
+
+    // Masquer le visualiseur et afficher la zone d'importation
+    document.getElementById('manga-viewer').style.display = 'none';
+    document.getElementById('import-zone').style.display = 'flex';
+
+    // Masquer le bouton Importer à nouveau
+    updateReimportButton();
+
+    showNotification('Prêt pour une nouvelle importation', 'info');
+}
+
+// Mettre à jour la visibilité du bouton Importer à nouveau
+function updateReimportButton() {
+    const reimportBtn = document.getElementById('reimport-btn');
+    if (reimportBtn) {
+        // Afficher seulement si on a un manga chargé et qu'on n'est pas en plein écran
+        if (appState.manga && !appState.isFullscreen) {
+            reimportBtn.style.display = 'inline-block';
+        } else {
+            reimportBtn.style.display = 'none';
+        }
     }
 }
 
@@ -706,6 +774,10 @@ function updateImageSize() {
 
 // Ajuster la taille d'image avec les raccourcis
 function adjustImageSize(delta) {
+    // Sauvegarder la position actuelle du scroll
+    const mainContent = document.querySelector('.main-content');
+    const scrollBefore = mainContent ? mainContent.scrollTop : 0;
+
     let newSize = parseInt(appState.imageSize) + delta;
     newSize = Math.max(50, Math.min(150, newSize)); // Limiter entre 50% et 150%
 
@@ -713,6 +785,13 @@ function adjustImageSize(delta) {
     document.getElementById('image-size').value = newSize;
     document.getElementById('image-size-value').textContent = `${newSize}%`;
     updateImageSize();
+
+    // Restaurer la position du scroll après un court délai
+    setTimeout(() => {
+        if (mainContent) {
+            mainContent.scrollTop = scrollBefore;
+        }
+    }, 10);
 }
 
 // Appliquer le thème
