@@ -236,11 +236,14 @@ body.fullscreen-mode .navbar-left {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 40px 40px 40px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 body.fullscreen-mode .main-content {
-    padding: 0 20px 40px 20px;
+    padding: 0;
 }
 
 .main-content:has(.import-zone) {
@@ -337,13 +340,13 @@ body.fullscreen-mode .main-content {
 /* Visualiseur de manga */
 .manga-viewer {
     width: 100%;
-    padding-top: 30px;
 }
 
 /* Zoom wrapper - applique le scale sur tout le conteneur */
 .zoom-wrapper {
     transform-origin: center top;
     transition: transform 0.3s ease;
+    width: 100%;
 }
 
 /* Conteneur des images - max 900px de large */
@@ -367,12 +370,22 @@ body.fullscreen-mode .main-content {
                 0 4px 12px rgba(0, 0, 0, 0.2),
                 0 2px 6px rgba(0, 0, 0, 0.15);
     transition: box-shadow 0.3s ease;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .manga-page:hover {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4),
-                0 6px 16px rgba(0, 0, 0, 0.3),
-                0 3px 8px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
 }
 
 body.night-theme .manga-page {
