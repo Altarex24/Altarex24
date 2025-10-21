@@ -235,6 +235,7 @@ body.fullscreen-mode .navbar-left {
 .main-content {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0 40px 40px 40px;
 }
 
@@ -339,6 +340,7 @@ body.fullscreen-mode .main-content {
     display: flex;
     flex-direction: column;
     align-items: center;
+    overflow-x: hidden;
 }
 
 /* Zoom wrapper */

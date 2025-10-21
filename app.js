@@ -423,8 +423,8 @@ function displayImages(images) {
         viewer.appendChild(imgWrapper);
     });
 
-    // Appliquer le zoom sur le wrapper
-    updateImageSize();
+    // Appliquer le zoom sur le wrapper (sans sauvegarder la position car nouvelles images)
+    updateImageSize(false);
 
     // Créer les boutons de navigation en bas
     createBottomNavigation();
@@ -777,38 +777,40 @@ function updateImageSpacing() {
 }
 
 // Mettre à jour la taille des images avec transform: scale()
-function updateImageSize() {
+function updateImageSize(savePosition = true) {
+    const mainContent = document.querySelector('.main-content');
+    let scrollPercentage = 0;
+
+    // Sauvegarder la position actuelle en pourcentage
+    if (savePosition && mainContent && mainContent.scrollHeight > mainContent.clientHeight) {
+        scrollPercentage = mainContent.scrollTop / (mainContent.scrollHeight - mainContent.clientHeight);
+    }
+
     const zoomWrapper = document.getElementById('zoom-wrapper');
     if (zoomWrapper) {
         const scale = appState.imageSize / 100;
         zoomWrapper.style.transform = `scale(${scale})`;
     }
+
+    // Restaurer la position en pourcentage après le zoom
+    if (savePosition && mainContent) {
+        setTimeout(() => {
+            if (mainContent.scrollHeight > mainContent.clientHeight) {
+                mainContent.scrollTop = scrollPercentage * (mainContent.scrollHeight - mainContent.clientHeight);
+            }
+        }, 50);
+    }
 }
 
 // Ajuster la taille d'image avec les raccourcis
 function adjustImageSize(delta) {
-    // Sauvegarder la position actuelle du scroll en pourcentage
-    const mainContent = document.querySelector('.main-content');
-    let scrollPercentage = 0;
-
-    if (mainContent && mainContent.scrollHeight > mainContent.clientHeight) {
-        scrollPercentage = mainContent.scrollTop / (mainContent.scrollHeight - mainContent.clientHeight);
-    }
-
     let newSize = parseInt(appState.imageSize) + delta;
     newSize = Math.max(50, Math.min(150, newSize)); // Limiter entre 50% et 150%
 
     appState.imageSize = newSize;
     document.getElementById('image-size').value = newSize;
     document.getElementById('image-size-value').textContent = `${newSize}%`;
-    updateImageSize();
-
-    // Restaurer la position du scroll en pourcentage après le zoom
-    setTimeout(() => {
-        if (mainContent && mainContent.scrollHeight > mainContent.clientHeight) {
-            mainContent.scrollTop = scrollPercentage * (mainContent.scrollHeight - mainContent.clientHeight);
-        }
-    }, 50);
+    updateImageSize(); // updateImageSize gère la sauvegarde de position
 }
 
 // Basculer le mode plein écran
