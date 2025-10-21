@@ -777,9 +777,13 @@ function updateImageSize() {
 
 // Ajuster la taille d'image avec les raccourcis
 function adjustImageSize(delta) {
-    // Sauvegarder la position actuelle du scroll
+    // Sauvegarder la position actuelle du scroll en pourcentage
     const mainContent = document.querySelector('.main-content');
-    const scrollBefore = mainContent ? mainContent.scrollTop : 0;
+    let scrollPercentage = 0;
+
+    if (mainContent && mainContent.scrollHeight > mainContent.clientHeight) {
+        scrollPercentage = mainContent.scrollTop / (mainContent.scrollHeight - mainContent.clientHeight);
+    }
 
     let newSize = parseInt(appState.imageSize) + delta;
     newSize = Math.max(50, Math.min(150, newSize)); // Limiter entre 50% et 150%
@@ -789,12 +793,12 @@ function adjustImageSize(delta) {
     document.getElementById('image-size-value').textContent = `${newSize}%`;
     updateImageSize();
 
-    // Restaurer la position du scroll après un court délai
+    // Restaurer la position du scroll en pourcentage après le zoom
     setTimeout(() => {
-        if (mainContent) {
-            mainContent.scrollTop = scrollBefore;
+        if (mainContent && mainContent.scrollHeight > mainContent.clientHeight) {
+            mainContent.scrollTop = scrollPercentage * (mainContent.scrollHeight - mainContent.clientHeight);
         }
-    }, 10);
+    }, 50);
 }
 
 // Basculer le mode plein écran
