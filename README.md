@@ -69,8 +69,11 @@ MonManga/
 - ⚙️ **Paramètres**
 
 **Raccourcis clavier :**
-- `Ctrl +` ou `Ctrl =` : Augmenter la taille des images
-- `Ctrl -` : Réduire la taille des images
+- `Ctrl +` ou `Ctrl =` : Augmenter la taille des images (sans déplacer la page)
+- `Ctrl -` : Réduire la taille des images (sans déplacer la page)
+
+**Boutons additionnels :**
+- 🔄 **Importer à nouveau** : Réinitialise l'application pour importer un autre manga (masqué en plein écran)
 
 ### 🧭 Navigation Intelligente
 
@@ -86,6 +89,12 @@ MonManga/
 ### 🔄 Tri Automatique
 - Tri naturel des fichiers (1, 2, 10 au lieu de 1, 10, 2)
 - Pages "credits" ou "credi" toujours placées en dernier
+
+### 🎬 Mode Plein Écran Amélioré
+- **Animation douce** : La barre de navigation glisse vers le haut en 0.6s
+- **Interface épurée** : Boutons de navigation masqués automatiquement
+- **Confort optimal** : Aucune distraction, focus total sur la lecture
+- **Retour fluide** : Animation inversée au retour en mode normal
 
 ## 📥 Installation
 
@@ -112,7 +121,16 @@ npm install
 npm start
 ```
 
-> 💡 **Astuce** : Consultez le fichier [INSTALLATION.txt](INSTALLATION.txt) pour un guide détaillé.
+### 🖱️ Créer un raccourci sur le bureau
+
+**Méthode rapide :**
+1. Double-cliquez sur `create-shortcut.bat`
+2. Un raccourci "Manga Reader" sera créé sur votre bureau
+3. Lancez l'application en 1 clic !
+
+Vous pouvez aussi lancer directement avec `start.bat` depuis le dossier du projet.
+
+> 💡 **Astuce** : Consultez [INSTALLATION.txt](INSTALLATION.txt) pour un guide détaillé et [RACCOURCI.txt](RACCOURCI.txt) pour créer un raccourci.
 
 ## 🚀 Utilisation
 
@@ -176,12 +194,16 @@ mainWindow.webContents.openDevTools();
 ✅ 5 solutions d'importation différentes
 ✅ Tri naturel avec credits à la fin
 ✅ Navigation intelligente entre chapitres/tomes/types
-✅ Raccourcis clavier Ctrl+/-
+✅ Raccourcis clavier Ctrl+/- (sans déplacement de page)
 ✅ 5 thèmes magnifiques
 ✅ Ajustement de la taille et de l'espacement
 ✅ Bouton de retour en haut flottant
-✅ Mode plein écran
+✅ Mode plein écran avec animation fluide
 ✅ Lecture verticale fluide
+✅ Ombres stylées autour des pages (sauf thème Nuit)
+✅ Bouton "Importer à nouveau" pour changer de manga
+✅ Positionnement optimisé des images
+✅ Raccourci bureau en 1 clic
 
 ## 📝 Notes
 
