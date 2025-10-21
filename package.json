@@ -5,13 +5,36 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "build": "electron-builder --win --x64",
+    "dist": "electron-builder"
   },
   "keywords": ["manga", "reader", "electron"],
-  "author": "",
+  "author": "Manga Reader Team",
   "license": "MIT",
   "dependencies": {
     "electron": "^27.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "electron-builder": "^24.6.4"
+  },
+  "build": {
+    "appId": "com.mangareader.app",
+    "productName": "Manga Reader",
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "**/*",
+      "!**/*.md",
+      "!*.bat"
+    ]
+  }
 }

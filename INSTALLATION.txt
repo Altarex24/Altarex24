@@ -1,95 +1,75 @@
-═══════════════════════════════════════════════════════════════
-   📖 GUIDE D'INSTALLATION - Manga Reader pour Windows
-═══════════════════════════════════════════════════════════════
+========================================
+    MANGA READER - GUIDE D'INSTALLATION
+========================================
 
-🎯 MÉTHODE 1 : Avec Git (RECOMMANDÉ)
-───────────────────────────────────────────────────────────────
+📦 MÉTHODE 1 : INSTALLATION PROPRE (Recommandée)
+================================================
 
-1. Ouvrir PowerShell ou l'Invite de commandes
+1. Double-cliquez sur : clean-install.bat
+   → Cela nettoie et réinstalle toutes les dépendances
 
-2. Taper ces commandes :
+2. Lancez l'application avec : start.bat
 
-   cd C:\Users\VOTRE_NOM\Documents
-   git clone https://github.com/Altarex24/Altarex24.git
-   cd Altarex24
-   git checkout claude/windows-office-app-011CULRDeozaRVruXcGHNK5L
-   npm install
-   npm start
 
-   (Remplacez VOTRE_NOM par votre nom d'utilisateur Windows)
+🖥️ MÉTHODE 2 : CRÉER UN .EXE AVEC ICÔNE (Application Windows complète)
+========================================================================
 
-───────────────────────────────────────────────────────────────
+1. Double-cliquez sur : build-app.bat
+   → Cela va créer un vrai fichier .exe Windows
 
-🎯 MÉTHODE 2 : Sans Git
-───────────────────────────────────────────────────────────────
+2. Attendez la fin de la construction (peut prendre 5-10 minutes)
 
-Si vous n'avez pas Git, vous pouvez :
+3. Allez dans le dossier "dist"
 
-Option A - Installer Git d'abord :
-   1. Téléchargez Git depuis : https://git-scm.com/download/win
-   2. Installez-le avec les options par défaut
-   3. Utilisez la MÉTHODE 1 ci-dessus
+4. Double-cliquez sur "Manga Reader Setup.exe"
 
-Option B - Télécharger manuellement :
-   1. Allez sur votre dépôt GitHub
-   2. Sélectionnez la branche : claude/windows-office-app-011CULRDeozaRVruXcGHNK5L
-   3. Cliquez sur "Code" > "Download ZIP"
-   4. Extrayez le ZIP dans C:\Users\VOTRE_NOM\Documents
-   5. Ouvrez PowerShell dans ce dossier :
-      - Clic droit dans le dossier
-      - Choisir "Ouvrir dans le terminal" ou "Ouvrir PowerShell ici"
-   6. Tapez :
-      npm install
-      npm start
+5. Suivez l'assistant d'installation
+   → Un raccourci sera créé automatiquement sur votre bureau
+   → Une icône avec le logo Manga Reader sera affichée
 
-───────────────────────────────────────────────────────────────
 
-📋 PRÉREQUIS
-───────────────────────────────────────────────────────────────
+📌 MÉTHODE 3 : RACCOURCI SIMPLE (Si vous ne voulez pas créer le .exe)
+=====================================================================
 
-✅ Node.js (version 14 ou supérieure)
-   Télécharger : https://nodejs.org/
-   Vous l'avez déjà installé ! ✓
+1. Double-cliquez sur : create-shortcut.bat
+   → Un raccourci "Manga Reader" apparaît sur votre bureau
 
-✅ Git (optionnel mais recommandé)
-   Télécharger : https://git-scm.com/download/win
+2. Lancez l'application via le raccourci
 
-───────────────────────────────────────────────────────────────
 
-🚀 UTILISATION
-───────────────────────────────────────────────────────────────
+⚙️ RÉSOLUTION DES PROBLÈMES
+============================
 
-Une fois l'application lancée :
+Si l'application ne démarre pas :
+1. Assurez-vous que Node.js est installé
+   → Téléchargez sur : https://nodejs.org/
 
-1. Cliquez sur le bouton "+" au centre
-2. Sélectionnez un DOSSIER contenant vos mangas
-3. L'application détecte automatiquement la structure !
+2. Réinstallez proprement avec clean-install.bat
 
-Structures supportées :
-  • Dossier/Images
-  • Dossier/Chapitres/Images
-  • Dossier/Tomes/Chapitres/Images
-  • Dossier/Tomes/Types/Chapitres/Images
+Si les images ne s'affichent pas correctement :
+1. Vérifiez que vos dossiers de manga sont bien structurés
+2. Relancez l'application
 
-───────────────────────────────────────────────────────────────
 
-❓ AIDE
-───────────────────────────────────────────────────────────────
+📖 UTILISATION
+==============
 
-Si vous avez des problèmes :
+1. Lancez l'application (via .exe ou start.bat)
 
-1. Vérifiez que Node.js est installé :
-   node --version
+2. Cliquez sur le bouton "+" pour importer votre manga
 
-2. Vérifiez que vous êtes dans le bon dossier :
-   dir
-   (Vous devriez voir package.json dans la liste)
+3. Sélectionnez le dossier contenant vos chapitres/tomes
 
-3. Si "npm install" échoue, essayez :
-   npm cache clean --force
-   npm install
+4. Profitez de la lecture !
 
-4. Pour relancer l'application :
-   npm start
+Raccourcis clavier :
+- Ctrl + : Zoom avant
+- Ctrl - : Zoom arrière  
+- F11 : Mode plein écran
+- Échap : Quitter le plein écran
 
-═══════════════════════════════════════════════════════════════
+
+❓ BESOIN D'AIDE ?
+==================
+
+Pour toute question ou problème, consultez le README.md

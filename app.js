@@ -429,13 +429,23 @@ function displayImages(images) {
     // Créer les boutons de navigation en bas
     createBottomNavigation();
 
-    // Scroller en haut APRÈS un court délai pour s'assurer que les images sont chargées
-    setTimeout(() => {
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.scrollTop = 0;
+    // Scroller en haut après le chargement de la première image
+    const firstImage = viewer.querySelector('img');
+    if (firstImage) {
+        firstImage.onload = () => {
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.scrollTop = 0;
+            }
+        };
+        // Fallback si l'image est déjà en cache
+        if (firstImage.complete) {
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.scrollTop = 0;
+            }
         }
-    }, 50);
+    }
 }
 
 // Créer les boutons de navigation en bas
