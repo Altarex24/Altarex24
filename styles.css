@@ -354,9 +354,9 @@ body.fullscreen-mode .main-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    width: 900px;
     padding-top: 30px;
-    transition: width 0.3s ease;
+    transition: width 0.2s ease;
 }
 
 .image-wrapper {

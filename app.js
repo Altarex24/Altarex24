@@ -776,59 +776,63 @@ function updateImageSpacing() {
     });
 }
 
-// Mettre à jour la taille des images avec largeur
+// Mettre à jour la taille des images
 function updateImageSize(savePosition = true) {
     const mainContent = document.querySelector('.main-content');
     const imageContainer = document.getElementById('image-container');
 
     if (!imageContainer) return;
 
-    // Sauvegarder quelle image est visible au centre avant le zoom
+    // Sauvegarder quelle image est au centre de l'écran
     let centerImageIndex = -1;
-    let offsetInImage = 0;
+    let scrollRatio = 0;
 
-    if (savePosition && mainContent) {
-        const viewportCenter = mainContent.scrollTop + (mainContent.clientHeight / 2);
+    if (savePosition && mainContent && mainContent.scrollHeight > 0) {
         const images = imageContainer.querySelectorAll('.image-wrapper');
+        const viewportCenter = mainContent.scrollTop + (mainContent.clientHeight / 2);
 
         let accumulatedHeight = parseInt(getComputedStyle(imageContainer).paddingTop) || 0;
 
         for (let i = 0; i < images.length; i++) {
-            const imageHeight = images[i].offsetHeight;
-            if (viewportCenter >= accumulatedHeight && viewportCenter <= accumulatedHeight + imageHeight) {
+            const imgHeight = images[i].offsetHeight;
+            const imgBottom = accumulatedHeight + imgHeight;
+
+            if (viewportCenter >= accumulatedHeight && viewportCenter < imgBottom) {
                 centerImageIndex = i;
-                offsetInImage = viewportCenter - accumulatedHeight;
+                scrollRatio = (viewportCenter - accumulatedHeight) / imgHeight;
                 break;
             }
-            accumulatedHeight += imageHeight + appState.spacing;
+
+            accumulatedHeight += imgHeight + appState.spacing;
         }
     }
 
-    // Appliquer la nouvelle largeur (900px en base, multiplié par le pourcentage)
+    // Appliquer la nouvelle largeur directement
     const baseWidth = 900;
     const newWidth = baseWidth * (appState.imageSize / 100);
-    imageContainer.style.maxWidth = `${newWidth}px`;
+    imageContainer.style.width = `${newWidth}px`;
 
-    // Restaurer la position pour que la même image soit visible
-    if (savePosition && mainContent && centerImageIndex >= 0) {
+    // Restaurer pour garder la même image au centre
+    if (savePosition && centerImageIndex >= 0 && mainContent) {
         setTimeout(() => {
             const images = imageContainer.querySelectorAll('.image-wrapper');
             if (images[centerImageIndex]) {
                 let accumulatedHeight = parseInt(getComputedStyle(imageContainer).paddingTop) || 0;
 
+                // Calculer la position de l'image cible
                 for (let i = 0; i < centerImageIndex; i++) {
                     accumulatedHeight += images[i].offsetHeight + appState.spacing;
                 }
 
-                // Ajouter l'offset proportionnel dans l'image
-                const oldImageHeight = images[centerImageIndex].offsetHeight / (appState.imageSize / 100) * (appState.imageSize / 100);
-                const ratio = offsetInImage / oldImageHeight;
-                const newOffset = images[centerImageIndex].offsetHeight * ratio;
+                // Ajouter le ratio dans l'image pour rester au même endroit
+                const newImageHeight = images[centerImageIndex].offsetHeight;
+                const offsetInImage = newImageHeight * scrollRatio;
 
-                const targetScroll = accumulatedHeight + newOffset - (mainContent.clientHeight / 2);
+                // Centrer cette position dans la vue
+                const targetScroll = accumulatedHeight + offsetInImage - (mainContent.clientHeight / 2);
                 mainContent.scrollTop = Math.max(0, targetScroll);
             }
-        }, 50);
+        }, 100);
     }
 }
 
