@@ -340,20 +340,26 @@ body.fullscreen-mode .main-content {
     padding-top: 30px;
 }
 
+/* Zoom wrapper - applique le scale sur tout le conteneur */
+.zoom-wrapper {
+    transform-origin: center top;
+    transition: transform 0.3s ease;
+}
+
+/* Conteneur des images - max 900px de large */
 #image-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0;
-}
-
-.image-wrapper {
-    display: flex;
-    justify-content: center;
     width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
+/* Les images prennent 100% de leur conteneur (900px max) */
 .manga-page {
+    width: 100%;
+    max-width: 100%;
     height: auto;
     display: block;
     border-radius: 8px;

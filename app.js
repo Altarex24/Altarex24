@@ -404,30 +404,26 @@ function displayImages(images) {
     const viewer = document.getElementById('image-container');
     viewer.innerHTML = '';
 
-    images.forEach((imagePath, index) => {
-        const imgWrapper = document.createElement('div');
-        imgWrapper.className = 'image-wrapper';
-        imgWrapper.style.marginBottom = `${appState.spacing}px`;
+    // Appliquer l'espacement avec gap
+    viewer.style.gap = `${appState.spacing}px`;
 
+    images.forEach((imagePath, index) => {
         const img = document.createElement('img');
         img.src = imagePath;
         img.alt = `Page ${index + 1}`;
         img.className = 'manga-page';
-
-        // Appliquer la taille directement à l'image
-        const baseWidth = 900;
-        const width = baseWidth * (appState.imageSize / 100);
-        img.style.width = `${width}px`;
-        img.style.maxWidth = 'none';
+        img.loading = 'lazy';
 
         // Marquer la dernière image
         if (index === images.length - 1) {
-            imgWrapper.dataset.lastPage = 'true';
+            img.dataset.lastPage = 'true';
         }
 
-        imgWrapper.appendChild(img);
-        viewer.appendChild(imgWrapper);
+        viewer.appendChild(img);
     });
+
+    // Appliquer le zoom
+    updateImageSize();
 
     // Créer les boutons de navigation en bas
     createBottomNavigation();
@@ -441,8 +437,12 @@ function displayImages(images) {
 
 // Créer les boutons de navigation en bas
 function createBottomNavigation() {
-    const lastImageWrapper = document.querySelector('[data-last-page="true"]');
-    if (!lastImageWrapper) return;
+    const lastImage = document.querySelector('[data-last-page="true"]');
+    if (!lastImage) return;
+
+    // Supprimer l'ancienne navigation si elle existe
+    const oldNav = document.querySelector('.bottom-navigation');
+    if (oldNav) oldNav.remove();
 
     const navContainer = document.createElement('div');
     navContainer.className = 'bottom-navigation';
@@ -468,7 +468,8 @@ function createBottomNavigation() {
     navContainer.appendChild(topBtn);
     navContainer.appendChild(nextBtn);
 
-    lastImageWrapper.appendChild(navContainer);
+    // Ajouter après la dernière image
+    lastImage.parentNode.appendChild(navContainer);
 
     // Désactiver les boutons si nécessaire
     if (!canNavigateChapter(-1)) prevBtn.disabled = true;
@@ -761,22 +762,19 @@ function updateScrollButton() {
 
 // Mettre à jour l'espacement des images
 function updateImageSpacing() {
-    const wrappers = document.querySelectorAll('.image-wrapper');
-    wrappers.forEach(wrapper => {
-        wrapper.style.marginBottom = `${appState.spacing}px`;
-    });
+    const container = document.getElementById('image-container');
+    if (container) {
+        container.style.gap = `${appState.spacing}px`;
+    }
 }
 
-// Mettre à jour la taille des images - SYSTÈME SIMPLE
+// Mettre à jour la taille des images avec transform: scale()
 function updateImageSize() {
-    const images = document.querySelectorAll('.manga-page');
-    const baseWidth = 900;
-    const newWidth = baseWidth * (appState.imageSize / 100);
-
-    images.forEach(img => {
-        img.style.width = `${newWidth}px`;
-        img.style.maxWidth = 'none';
-    });
+    const zoomWrapper = document.getElementById('zoom-wrapper');
+    if (zoomWrapper) {
+        const scale = appState.imageSize / 100;
+        zoomWrapper.style.transform = `scale(${scale})`;
+    }
 }
 
 // Ajuster la taille d'image avec les raccourcis
