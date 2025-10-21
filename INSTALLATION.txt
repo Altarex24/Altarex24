@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════════════════
+   📖 GUIDE D'INSTALLATION - Manga Reader pour Windows
+═══════════════════════════════════════════════════════════════
+
+🎯 MÉTHODE 1 : Avec Git (RECOMMANDÉ)
+───────────────────────────────────────────────────────────────
+
+1. Ouvrir PowerShell ou l'Invite de commandes
+
+2. Taper ces commandes :
+
+   cd C:\Users\VOTRE_NOM\Documents
+   git clone https://github.com/Altarex24/Altarex24.git
+   cd Altarex24
+   git checkout claude/windows-office-app-011CULRDeozaRVruXcGHNK5L
+   npm install
+   npm start
+
+   (Remplacez VOTRE_NOM par votre nom d'utilisateur Windows)
+
+───────────────────────────────────────────────────────────────
+
+🎯 MÉTHODE 2 : Sans Git
+───────────────────────────────────────────────────────────────
+
+Si vous n'avez pas Git, vous pouvez :
+
+Option A - Installer Git d'abord :
+   1. Téléchargez Git depuis : https://git-scm.com/download/win
+   2. Installez-le avec les options par défaut
+   3. Utilisez la MÉTHODE 1 ci-dessus
+
+Option B - Télécharger manuellement :
+   1. Allez sur votre dépôt GitHub
+   2. Sélectionnez la branche : claude/windows-office-app-011CULRDeozaRVruXcGHNK5L
+   3. Cliquez sur "Code" > "Download ZIP"
+   4. Extrayez le ZIP dans C:\Users\VOTRE_NOM\Documents
+   5. Ouvrez PowerShell dans ce dossier :
+      - Clic droit dans le dossier
+      - Choisir "Ouvrir dans le terminal" ou "Ouvrir PowerShell ici"
+   6. Tapez :
+      npm install
+      npm start
+
+───────────────────────────────────────────────────────────────
+
+📋 PRÉREQUIS
+───────────────────────────────────────────────────────────────
+
+✅ Node.js (version 14 ou supérieure)
+   Télécharger : https://nodejs.org/
+   Vous l'avez déjà installé ! ✓
+
+✅ Git (optionnel mais recommandé)
+   Télécharger : https://git-scm.com/download/win
+
+───────────────────────────────────────────────────────────────
+
+🚀 UTILISATION
+───────────────────────────────────────────────────────────────
+
+Une fois l'application lancée :
+
+1. Cliquez sur le bouton "+" au centre
+2. Sélectionnez un DOSSIER contenant vos mangas
+3. L'application détecte automatiquement la structure !
+
+Structures supportées :
+  • Dossier/Images
+  • Dossier/Chapitres/Images
+  • Dossier/Tomes/Chapitres/Images
+  • Dossier/Tomes/Types/Chapitres/Images
+
+───────────────────────────────────────────────────────────────
+
+❓ AIDE
+───────────────────────────────────────────────────────────────
+
+Si vous avez des problèmes :
+
+1. Vérifiez que Node.js est installé :
+   node --version
+
+2. Vérifiez que vous êtes dans le bon dossier :
+   dir
+   (Vous devriez voir package.json dans la liste)
+
+3. Si "npm install" échoue, essayez :
+   npm cache clean --force
+   npm install
+
+4. Pour relancer l'application :
+   npm start
+
+═══════════════════════════════════════════════════════════════
