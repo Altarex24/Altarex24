@@ -264,3 +264,16 @@ ipcMain.on('toggle-fullscreen', () => {
   const isFullScreen = mainWindow.isFullScreen();
   mainWindow.setFullScreen(!isFullScreen);
 });
+
+// Gestionnaire pour définir le mode plein écran et masquer/afficher les menus
+ipcMain.on('set-fullscreen', (event, isFullscreen) => {
+  if (isFullscreen) {
+    // Masquer les menus en plein écran
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.setAutoHideMenuBar(true);
+  } else {
+    // Afficher les menus en mode normal
+    mainWindow.setMenuBarVisibility(true);
+    mainWindow.setAutoHideMenuBar(false);
+  }
+});

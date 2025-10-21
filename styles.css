@@ -235,7 +235,14 @@ body.fullscreen-mode .navbar-left {
 .main-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 40px 40px 40px;
+    padding: 30px 40px 40px 40px;
+    min-height: calc(100vh - 80px);
+}
+
+body.fullscreen-mode .main-content {
+    padding: 0;
+    margin: 0;
+    min-height: 100vh;
 }
 
 .main-content:has(.import-zone) {
@@ -332,8 +339,18 @@ body.fullscreen-mode .navbar-left {
 /* Visualiseur de manga */
 .manga-viewer {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Zoom wrapper */
+.zoom-wrapper {
+    transform-origin: center top;
+    transition: transform 0.3s ease;
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
 #image-container {
@@ -341,6 +358,7 @@ body.fullscreen-mode .navbar-left {
     flex-direction: column;
     align-items: center;
     width: 100%;
+    max-width: 900px;
 }
 
 .image-wrapper {
@@ -351,6 +369,7 @@ body.fullscreen-mode .navbar-left {
 }
 
 .manga-page {
+    width: 100%;
     max-width: 100%;
     height: auto;
     display: block;
@@ -358,12 +377,23 @@ body.fullscreen-mode .navbar-left {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
                 0 4px 12px rgba(0, 0, 0, 0.2),
                 0 2px 6px rgba(0, 0, 0, 0.15);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: box-shadow 0.3s ease;
+}
+
+.manga-page:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4),
+                0 6px 16px rgba(0, 0, 0, 0.3),
+                0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 body.night-theme .manga-page {
     box-shadow: none;
     border: 1px solid #2a2a2a;
+}
+
+body.night-theme .manga-page:hover {
+    box-shadow: none;
+    border-color: #3a3a3a;
 }
 
 /* Boutons de navigation en bas */

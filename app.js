@@ -67,8 +67,9 @@ function initializeEventListeners() {
         applyTheme(e.target.value);
     });
 
-    // Raccourcis clavier Ctrl+/- pour la taille
+    // Raccourcis clavier
     document.addEventListener('keydown', (e) => {
+        // Ctrl+/- pour la taille
         if (e.ctrlKey || e.metaKey) {
             if (e.key === '+' || e.key === '=') {
                 e.preventDefault();
@@ -78,24 +79,23 @@ function initializeEventListeners() {
                 adjustImageSize(-10);
             }
         }
+        // F11 pour le plein écran
+        else if (e.key === 'F11') {
+            e.preventDefault();
+            toggleFullscreen();
+        }
+        // Escape pour quitter le plein écran
+        else if (e.key === 'Escape' && appState.isFullscreen) {
+            toggleFullscreen();
+        }
     });
+
+    // Écouter les changements de mode plein écran
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     // Bouton plein écran
     const fullscreenBtn = document.getElementById('fullscreen-btn');
-    fullscreenBtn.addEventListener('click', () => {
-        appState.isFullscreen = !appState.isFullscreen;
-        ipcRenderer.send('toggle-fullscreen');
-
-        // Ajouter/retirer la classe pour l'animation
-        if (appState.isFullscreen) {
-            document.body.classList.add('fullscreen-mode');
-        } else {
-            document.body.classList.remove('fullscreen-mode');
-        }
-
-        updateScrollButton();
-        updateReimportButton();
-    });
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
 
     // Bouton paramètres
     const settingsBtn = document.getElementById('settings-btn');
@@ -413,7 +413,6 @@ function displayImages(images) {
         img.src = imagePath;
         img.alt = `Page ${index + 1}`;
         img.className = 'manga-page';
-        img.style.width = `${appState.imageSize}%`;
 
         // Marquer la dernière image
         if (index === images.length - 1) {
@@ -424,6 +423,9 @@ function displayImages(images) {
         viewer.appendChild(imgWrapper);
     });
 
+    // Appliquer le zoom sur le wrapper
+    updateImageSize();
+
     // Créer les boutons de navigation en bas
     createBottomNavigation();
 
@@ -433,7 +435,7 @@ function displayImages(images) {
         if (mainContent) {
             mainContent.scrollTop = 0;
         }
-    }, 100);
+    }, 50);
 }
 
 // Créer les boutons de navigation en bas
@@ -764,12 +766,13 @@ function updateImageSpacing() {
     });
 }
 
-// Mettre à jour la taille des images
+// Mettre à jour la taille des images avec transform: scale()
 function updateImageSize() {
-    const images = document.querySelectorAll('.manga-page');
-    images.forEach(img => {
-        img.style.width = `${appState.imageSize}%`;
-    });
+    const zoomWrapper = document.getElementById('zoom-wrapper');
+    if (zoomWrapper) {
+        const scale = appState.imageSize / 100;
+        zoomWrapper.style.transform = `scale(${scale})`;
+    }
 }
 
 // Ajuster la taille d'image avec les raccourcis
@@ -792,6 +795,48 @@ function adjustImageSize(delta) {
             mainContent.scrollTop = scrollBefore;
         }
     }, 10);
+}
+
+// Basculer le mode plein écran
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        // Entrer en plein écran
+        document.documentElement.requestFullscreen().then(() => {
+            appState.isFullscreen = true;
+            document.body.classList.add('fullscreen-mode');
+            ipcRenderer.send('set-fullscreen', true);
+            updateScrollButton();
+            updateReimportButton();
+        }).catch(err => {
+            console.error('Erreur plein écran:', err);
+        });
+    } else {
+        // Quitter le plein écran
+        document.exitFullscreen().then(() => {
+            appState.isFullscreen = false;
+            document.body.classList.remove('fullscreen-mode');
+            ipcRenderer.send('set-fullscreen', false);
+            updateScrollButton();
+            updateReimportButton();
+        });
+    }
+}
+
+// Gérer les changements de mode plein écran (ex: F11, Escape)
+function handleFullscreenChange() {
+    if (!document.fullscreenElement) {
+        appState.isFullscreen = false;
+        document.body.classList.remove('fullscreen-mode');
+        ipcRenderer.send('set-fullscreen', false);
+        updateScrollButton();
+        updateReimportButton();
+    } else {
+        appState.isFullscreen = true;
+        document.body.classList.add('fullscreen-mode');
+        ipcRenderer.send('set-fullscreen', true);
+        updateScrollButton();
+        updateReimportButton();
+    }
 }
 
 // Appliquer le thème
