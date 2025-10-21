@@ -414,6 +414,12 @@ function displayImages(images) {
         img.alt = `Page ${index + 1}`;
         img.className = 'manga-page';
 
+        // Appliquer la taille directement à l'image
+        const baseWidth = 900;
+        const width = baseWidth * (appState.imageSize / 100);
+        img.style.width = `${width}px`;
+        img.style.maxWidth = 'none';
+
         // Marquer la dernière image
         if (index === images.length - 1) {
             imgWrapper.dataset.lastPage = 'true';
@@ -423,28 +429,13 @@ function displayImages(images) {
         viewer.appendChild(imgWrapper);
     });
 
-    // Appliquer le zoom sur le wrapper (sans sauvegarder la position car nouvelles images)
-    updateImageSize(false);
-
     // Créer les boutons de navigation en bas
     createBottomNavigation();
 
-    // Scroller en haut après le chargement de la première image
-    const firstImage = viewer.querySelector('img');
-    if (firstImage) {
-        firstImage.onload = () => {
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.scrollTop = 0;
-            }
-        };
-        // Fallback si l'image est déjà en cache
-        if (firstImage.complete) {
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.scrollTop = 0;
-            }
-        }
+    // Scroller tout en haut
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.scrollTop = 0;
     }
 }
 
@@ -776,64 +767,16 @@ function updateImageSpacing() {
     });
 }
 
-// Mettre à jour la taille des images
-function updateImageSize(savePosition = true) {
-    const mainContent = document.querySelector('.main-content');
-    const imageContainer = document.getElementById('image-container');
-
-    if (!imageContainer) return;
-
-    // Sauvegarder quelle image est au centre de l'écran
-    let centerImageIndex = -1;
-    let scrollRatio = 0;
-
-    if (savePosition && mainContent && mainContent.scrollHeight > 0) {
-        const images = imageContainer.querySelectorAll('.image-wrapper');
-        const viewportCenter = mainContent.scrollTop + (mainContent.clientHeight / 2);
-
-        let accumulatedHeight = parseInt(getComputedStyle(imageContainer).paddingTop) || 0;
-
-        for (let i = 0; i < images.length; i++) {
-            const imgHeight = images[i].offsetHeight;
-            const imgBottom = accumulatedHeight + imgHeight;
-
-            if (viewportCenter >= accumulatedHeight && viewportCenter < imgBottom) {
-                centerImageIndex = i;
-                scrollRatio = (viewportCenter - accumulatedHeight) / imgHeight;
-                break;
-            }
-
-            accumulatedHeight += imgHeight + appState.spacing;
-        }
-    }
-
-    // Appliquer la nouvelle largeur directement
+// Mettre à jour la taille des images - SYSTÈME SIMPLE
+function updateImageSize() {
+    const images = document.querySelectorAll('.manga-page');
     const baseWidth = 900;
     const newWidth = baseWidth * (appState.imageSize / 100);
-    imageContainer.style.width = `${newWidth}px`;
 
-    // Restaurer pour garder la même image au centre
-    if (savePosition && centerImageIndex >= 0 && mainContent) {
-        setTimeout(() => {
-            const images = imageContainer.querySelectorAll('.image-wrapper');
-            if (images[centerImageIndex]) {
-                let accumulatedHeight = parseInt(getComputedStyle(imageContainer).paddingTop) || 0;
-
-                // Calculer la position de l'image cible
-                for (let i = 0; i < centerImageIndex; i++) {
-                    accumulatedHeight += images[i].offsetHeight + appState.spacing;
-                }
-
-                // Ajouter le ratio dans l'image pour rester au même endroit
-                const newImageHeight = images[centerImageIndex].offsetHeight;
-                const offsetInImage = newImageHeight * scrollRatio;
-
-                // Centrer cette position dans la vue
-                const targetScroll = accumulatedHeight + offsetInImage - (mainContent.clientHeight / 2);
-                mainContent.scrollTop = Math.max(0, targetScroll);
-            }
-        }, 100);
-    }
+    images.forEach(img => {
+        img.style.width = `${newWidth}px`;
+        img.style.maxWidth = 'none';
+    });
 }
 
 // Ajuster la taille d'image avec les raccourcis
@@ -844,7 +787,7 @@ function adjustImageSize(delta) {
     appState.imageSize = newSize;
     document.getElementById('image-size').value = newSize;
     document.getElementById('image-size-value').textContent = `${newSize}%`;
-    updateImageSize(); // updateImageSize gère la sauvegarde de position
+    updateImageSize();
 }
 
 // Basculer le mode plein écran

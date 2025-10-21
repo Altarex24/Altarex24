@@ -337,38 +337,23 @@ body.fullscreen-mode .main-content {
 /* Visualiseur de manga */
 .manga-viewer {
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-x: hidden;
-}
-
-/* Zoom wrapper */
-.zoom-wrapper {
-    width: 100%;
-    display: flex;
-    justify-content: center;
+    padding-top: 30px;
 }
 
 #image-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 900px;
-    padding-top: 30px;
-    transition: width 0.2s ease;
+    gap: 0;
 }
 
 .image-wrapper {
-    width: 100%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 .manga-page {
-    width: 100%;
-    max-width: 100%;
     height: auto;
     display: block;
     border-radius: 8px;
