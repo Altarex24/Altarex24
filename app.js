@@ -5,7 +5,12 @@ const appState = {
     currentView: 'tomes',
     spacing: 10,
     theme: 'dark',
-    mangas: []
+    manga: null,
+    currentTomeIndex: 0,
+    currentTypeIndex: 0,
+    currentChapterIndex: 0,
+    isFullscreen: false,
+    scrollPosition: 0
 };
 
 // Initialisation
@@ -20,10 +25,7 @@ function initializeEventListeners() {
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            navButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            appState.currentView = btn.dataset.view;
-            console.log('Vue actuelle:', appState.currentView);
+            handleNavigation(btn.dataset.view);
         });
     });
 
@@ -37,7 +39,7 @@ function initializeEventListeners() {
     spacingSlider.addEventListener('input', (e) => {
         appState.spacing = e.target.value;
         spacingValue.textContent = `${e.target.value}px`;
-        updateMangaGrid();
+        updateImageSpacing();
     });
 
     // Sélecteur de thème
@@ -50,7 +52,9 @@ function initializeEventListeners() {
     // Bouton plein écran
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     fullscreenBtn.addEventListener('click', () => {
+        appState.isFullscreen = !appState.isFullscreen;
         ipcRenderer.send('toggle-fullscreen');
+        updateScrollButton();
     });
 
     // Bouton paramètres
@@ -58,37 +62,84 @@ function initializeEventListeners() {
     settingsBtn.addEventListener('click', () => {
         showSettings();
     });
+
+    // Détection du scroll
+    const mainContent = document.querySelector('.main-content');
+    mainContent.addEventListener('scroll', handleScroll);
 }
 
-// Gérer l'importation de fichier
+// Gérer la navigation
+function handleNavigation(view) {
+    if (!appState.manga) return;
+
+    const solution = appState.manga.solution;
+
+    if (solution === 1) {
+        // Pas de navigation pour solution 1
+        return;
+    }
+
+    if (solution === 2) {
+        // Navigation par chapitres uniquement
+        if (view === 'chapitres') {
+            showChapterSelector();
+        }
+    }
+
+    if (solution === 3) {
+        // Navigation par tomes et chapitres
+        if (view === 'tomes') {
+            showTomeSelector();
+        } else if (view === 'chapitres') {
+            showChapterSelector();
+        }
+    }
+
+    if (solution === 4) {
+        // Navigation complète
+        if (view === 'tomes') {
+            showTomeSelector();
+        } else if (view === 'type') {
+            showTypeSelector();
+        } else if (view === 'chapitres') {
+            showChapterSelector();
+        }
+    }
+}
+
+// Gérer l'importation de dossier
 async function handleImport() {
     try {
-        const filePath = await ipcRenderer.invoke('select-file');
+        const folderPath = await ipcRenderer.invoke('select-folder');
 
-        if (filePath) {
-            console.log('Fichier sélectionné:', filePath);
+        if (folderPath) {
+            showNotification('Analyse du dossier en cours...', 'info');
 
-            // Créer un objet manga
-            const manga = {
-                id: Date.now(),
-                title: extractFileName(filePath),
-                path: filePath,
-                type: 'Manga',
-                chapters: 0
-            };
+            const analysis = await ipcRenderer.invoke('analyze-folder', folderPath);
 
-            // Ajouter à la liste
-            appState.mangas.push(manga);
+            if (!analysis) {
+                showNotification('Aucun manga trouvé dans ce dossier', 'error');
+                return;
+            }
 
-            // Masquer la zone d'importation et afficher la grille
+            console.log('Analyse:', analysis);
+
+            appState.manga = analysis;
+            appState.currentTomeIndex = 0;
+            appState.currentTypeIndex = 0;
+            appState.currentChapterIndex = 0;
+
+            // Masquer la zone d'importation
             document.getElementById('import-zone').style.display = 'none';
-            document.getElementById('manga-grid').style.display = 'grid';
+            document.getElementById('manga-viewer').style.display = 'block';
 
-            // Mettre à jour l'affichage
-            updateMangaGrid();
+            // Mettre à jour la navigation
+            updateNavigationButtons();
 
-            // Animation de succès
-            showNotification('Manga importé avec succès!', 'success');
+            // Afficher le premier chapitre
+            displayCurrentChapter();
+
+            showNotification(`Manga importé! (Solution ${analysis.solution})`, 'success');
         }
     } catch (error) {
         console.error('Erreur lors de l\'importation:', error);
@@ -96,61 +147,469 @@ async function handleImport() {
     }
 }
 
-// Extraire le nom du fichier
-function extractFileName(filePath) {
-    const parts = filePath.split(/[\\\/]/);
-    const fileName = parts[parts.length - 1];
-    return fileName.replace(/\.[^/.]+$/, ''); // Retirer l'extension
+// Mettre à jour les boutons de navigation
+function updateNavigationButtons() {
+    const navbar = document.querySelector('.navbar-left');
+    const solution = appState.manga.solution;
+
+    // Retirer les boutons actuels
+    navbar.innerHTML = '';
+
+    if (solution === 1) {
+        // Solution 1: Afficher seulement le chapitre
+        const chapterBtn = createNavButton(appState.manga.structure.chapters[0].name, 'chapitres', true);
+        navbar.appendChild(chapterBtn);
+    } else if (solution === 2) {
+        // Solution 2: Volume et Chapitres
+        const volumeBtn = createNavButton(appState.manga.structure.volume, 'volume', false);
+        const chapterBtn = createNavButton('Chapitres', 'chapitres', true);
+        navbar.appendChild(volumeBtn);
+        navbar.appendChild(chapterBtn);
+    } else if (solution === 3) {
+        // Solution 3: Tomes et Chapitres
+        const tomeBtn = createNavButton('Tomes', 'tomes', true);
+        const chapterBtn = createNavButton('Chapitres', 'chapitres', true);
+        navbar.appendChild(tomeBtn);
+        navbar.appendChild(chapterBtn);
+    } else if (solution === 4) {
+        // Solution 4: Tomes, Types et Chapitres
+        const tomeBtn = createNavButton('Tomes', 'tomes', true);
+        const typeBtn = createNavButton('Types', 'type', true);
+        const chapterBtn = createNavButton('Chapitres', 'chapitres', true);
+        navbar.appendChild(tomeBtn);
+        navbar.appendChild(typeBtn);
+        navbar.appendChild(chapterBtn);
+    }
+
+    // Mettre à jour les noms actuels
+    updateCurrentNames();
 }
 
-// Mettre à jour la grille de mangas
-function updateMangaGrid() {
-    const mangaGrid = document.getElementById('manga-grid');
-    mangaGrid.style.gap = `${appState.spacing}px`;
+// Créer un bouton de navigation
+function createNavButton(text, view, clickable) {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.textContent = text;
+    btn.dataset.view = view;
 
-    // Afficher les mangas
-    mangaGrid.innerHTML = appState.mangas.map(manga => `
-        <div class="manga-item" data-id="${manga.id}">
-            <div class="manga-cover">
-                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px;">
-                    📖
-                </div>
-            </div>
-            <div class="manga-info">
-                <div class="manga-title">${manga.title}</div>
-                <div class="manga-details">${manga.type} • ${manga.chapters} chapitres</div>
-            </div>
-        </div>
-    `).join('');
+    if (clickable) {
+        btn.addEventListener('click', () => handleNavigation(view));
+    } else {
+        btn.style.cursor = 'default';
+        btn.classList.add('active');
+    }
 
-    // Ajouter les événements de clic sur les mangas
-    const mangaItems = mangaGrid.querySelectorAll('.manga-item');
-    mangaItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const mangaId = parseInt(item.dataset.id);
-            const manga = appState.mangas.find(m => m.id === mangaId);
-            if (manga) {
-                openManga(manga);
-            }
-        });
+    return btn;
+}
+
+// Mettre à jour les noms actuels dans la navigation
+function updateCurrentNames() {
+    const solution = appState.manga.solution;
+    const buttons = document.querySelectorAll('.nav-btn');
+
+    if (solution === 3) {
+        const currentTome = appState.manga.structure.tomes[appState.currentTomeIndex];
+        buttons[0].textContent = currentTome.name;
+
+        const currentChapter = currentTome.chapters[appState.currentChapterIndex];
+        buttons[1].textContent = currentChapter.name;
+    } else if (solution === 4) {
+        const currentTome = appState.manga.structure.tomes[appState.currentTomeIndex];
+        buttons[0].textContent = currentTome.name;
+
+        const currentType = currentTome.types[appState.currentTypeIndex];
+        buttons[1].textContent = currentType.name;
+
+        const currentChapter = currentType.chapters[appState.currentChapterIndex];
+        buttons[2].textContent = currentChapter.name;
+    }
+}
+
+// Afficher le chapitre actuel
+function displayCurrentChapter() {
+    const solution = appState.manga.solution;
+    let images = [];
+
+    if (solution === 1) {
+        images = appState.manga.structure.chapters[0].images;
+    } else if (solution === 2) {
+        images = appState.manga.structure.chapters[appState.currentChapterIndex].images;
+    } else if (solution === 3) {
+        const tome = appState.manga.structure.tomes[appState.currentTomeIndex];
+        images = tome.chapters[appState.currentChapterIndex].images;
+    } else if (solution === 4) {
+        const tome = appState.manga.structure.tomes[appState.currentTomeIndex];
+        const type = tome.types[appState.currentTypeIndex];
+        images = type.chapters[appState.currentChapterIndex].images;
+    }
+
+    displayImages(images);
+}
+
+// Afficher les images
+function displayImages(images) {
+    const viewer = document.getElementById('image-container');
+    viewer.innerHTML = '';
+
+    images.forEach((imagePath, index) => {
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'image-wrapper';
+        imgWrapper.style.marginBottom = `${appState.spacing}px`;
+
+        const img = document.createElement('img');
+        img.src = imagePath;
+        img.alt = `Page ${index + 1}`;
+        img.className = 'manga-page';
+
+        // Marquer la dernière image
+        if (index === images.length - 1) {
+            imgWrapper.dataset.lastPage = 'true';
+        }
+
+        imgWrapper.appendChild(img);
+        viewer.appendChild(imgWrapper);
     });
+
+    // Scroller en haut
+    document.querySelector('.main-content').scrollTop = 0;
+
+    // Créer les boutons de navigation en bas
+    createBottomNavigation();
 }
 
-// Ouvrir un manga
-function openManga(manga) {
-    console.log('Ouverture du manga:', manga);
-    showNotification(`Ouverture de ${manga.title}...`, 'info');
-    // Ici on ajoutera la logique de lecture plus tard
+// Créer les boutons de navigation en bas
+function createBottomNavigation() {
+    const lastImageWrapper = document.querySelector('[data-last-page="true"]');
+    if (!lastImageWrapper) return;
+
+    const navContainer = document.createElement('div');
+    navContainer.className = 'bottom-navigation';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'nav-bottom-btn';
+    prevBtn.innerHTML = '⬅️ Chapitre précédent';
+    prevBtn.onclick = () => navigateChapter(-1);
+
+    const topBtn = document.createElement('button');
+    topBtn.className = 'nav-bottom-btn';
+    topBtn.innerHTML = '⬆️ Remonter';
+    topBtn.onclick = () => {
+        document.querySelector('.main-content').scrollTop = 0;
+    };
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'nav-bottom-btn';
+    nextBtn.innerHTML = 'Chapitre suivant ➡️';
+    nextBtn.onclick = () => navigateChapter(1);
+
+    navContainer.appendChild(prevBtn);
+    navContainer.appendChild(topBtn);
+    navContainer.appendChild(nextBtn);
+
+    lastImageWrapper.appendChild(navContainer);
+
+    // Désactiver les boutons si nécessaire
+    if (!canNavigateChapter(-1)) prevBtn.disabled = true;
+    if (!canNavigateChapter(1)) nextBtn.disabled = true;
+}
+
+// Naviguer entre les chapitres
+function navigateChapter(direction) {
+    const solution = appState.manga.solution;
+
+    if (solution === 1) {
+        return; // Pas de navigation
+    } else if (solution === 2) {
+        const chapters = appState.manga.structure.chapters;
+        appState.currentChapterIndex += direction;
+
+        if (appState.currentChapterIndex < 0) appState.currentChapterIndex = 0;
+        if (appState.currentChapterIndex >= chapters.length) {
+            appState.currentChapterIndex = chapters.length - 1;
+        }
+    } else if (solution === 3) {
+        navigateSolution3(direction);
+    } else if (solution === 4) {
+        navigateSolution4(direction);
+    }
+
+    updateCurrentNames();
+    displayCurrentChapter();
+}
+
+// Navigation pour solution 3
+function navigateSolution3(direction) {
+    const tomes = appState.manga.structure.tomes;
+    const currentTome = tomes[appState.currentTomeIndex];
+    const chapters = currentTome.chapters;
+
+    appState.currentChapterIndex += direction;
+
+    // Si on sort des chapitres, changer de tome
+    if (appState.currentChapterIndex < 0) {
+        if (appState.currentTomeIndex > 0) {
+            appState.currentTomeIndex--;
+            appState.currentChapterIndex = tomes[appState.currentTomeIndex].chapters.length - 1;
+        } else {
+            appState.currentChapterIndex = 0;
+        }
+    } else if (appState.currentChapterIndex >= chapters.length) {
+        if (appState.currentTomeIndex < tomes.length - 1) {
+            appState.currentTomeIndex++;
+            appState.currentChapterIndex = 0;
+        } else {
+            appState.currentChapterIndex = chapters.length - 1;
+        }
+    }
+}
+
+// Navigation pour solution 4
+function navigateSolution4(direction) {
+    const tomes = appState.manga.structure.tomes;
+    const currentTome = tomes[appState.currentTomeIndex];
+    const currentType = currentTome.types[appState.currentTypeIndex];
+    const chapters = currentType.chapters;
+
+    appState.currentChapterIndex += direction;
+
+    // Si on sort des chapitres
+    if (appState.currentChapterIndex < 0) {
+        // Essayer le type précédent
+        if (appState.currentTypeIndex > 0) {
+            appState.currentTypeIndex--;
+            const prevType = currentTome.types[appState.currentTypeIndex];
+            appState.currentChapterIndex = prevType.chapters.length - 1;
+        } else if (appState.currentTomeIndex > 0) {
+            // Essayer le tome précédent
+            appState.currentTomeIndex--;
+            const prevTome = tomes[appState.currentTomeIndex];
+            appState.currentTypeIndex = prevTome.types.length - 1;
+            appState.currentChapterIndex = prevTome.types[appState.currentTypeIndex].chapters.length - 1;
+        } else {
+            appState.currentChapterIndex = 0;
+        }
+    } else if (appState.currentChapterIndex >= chapters.length) {
+        // Essayer le type suivant
+        if (appState.currentTypeIndex < currentTome.types.length - 1) {
+            appState.currentTypeIndex++;
+            appState.currentChapterIndex = 0;
+        } else if (appState.currentTomeIndex < tomes.length - 1) {
+            // Essayer le tome suivant
+            appState.currentTomeIndex++;
+            appState.currentTypeIndex = 0;
+            appState.currentChapterIndex = 0;
+        } else {
+            appState.currentChapterIndex = chapters.length - 1;
+        }
+    }
+}
+
+// Vérifier si on peut naviguer
+function canNavigateChapter(direction) {
+    const solution = appState.manga.solution;
+
+    if (solution === 1) return false;
+
+    if (solution === 2) {
+        const chapters = appState.manga.structure.chapters;
+        if (direction < 0) return appState.currentChapterIndex > 0;
+        return appState.currentChapterIndex < chapters.length - 1;
+    }
+
+    if (solution === 3) {
+        const tomes = appState.manga.structure.tomes;
+        if (direction < 0) {
+            return appState.currentTomeIndex > 0 || appState.currentChapterIndex > 0;
+        } else {
+            const lastTome = tomes[tomes.length - 1];
+            return appState.currentTomeIndex < tomes.length - 1 ||
+                   appState.currentChapterIndex < tomes[appState.currentTomeIndex].chapters.length - 1;
+        }
+    }
+
+    if (solution === 4) {
+        const tomes = appState.manga.structure.tomes;
+        if (direction < 0) {
+            return appState.currentTomeIndex > 0 ||
+                   appState.currentTypeIndex > 0 ||
+                   appState.currentChapterIndex > 0;
+        } else {
+            const currentTome = tomes[appState.currentTomeIndex];
+            const currentType = currentTome.types[appState.currentTypeIndex];
+            return appState.currentTomeIndex < tomes.length - 1 ||
+                   appState.currentTypeIndex < currentTome.types.length - 1 ||
+                   appState.currentChapterIndex < currentType.chapters.length - 1;
+        }
+    }
+
+    return false;
+}
+
+// Afficher le sélecteur de tome
+function showTomeSelector() {
+    if (!appState.manga) return;
+
+    const solution = appState.manga.solution;
+    if (solution < 3) return;
+
+    const tomes = appState.manga.structure.tomes;
+
+    const modal = createModal('Sélectionner un tome', tomes.map((tome, index) => ({
+        text: tome.name,
+        onClick: () => {
+            appState.currentTomeIndex = index;
+            appState.currentTypeIndex = 0;
+            appState.currentChapterIndex = 0;
+            updateCurrentNames();
+            displayCurrentChapter();
+            closeModal();
+        }
+    })));
+
+    document.body.appendChild(modal);
+}
+
+// Afficher le sélecteur de type
+function showTypeSelector() {
+    if (!appState.manga || appState.manga.solution !== 4) return;
+
+    const currentTome = appState.manga.structure.tomes[appState.currentTomeIndex];
+    const types = currentTome.types;
+
+    const modal = createModal('Sélectionner un type', types.map((type, index) => ({
+        text: type.name,
+        onClick: () => {
+            appState.currentTypeIndex = index;
+            appState.currentChapterIndex = 0;
+            updateCurrentNames();
+            displayCurrentChapter();
+            closeModal();
+        }
+    })));
+
+    document.body.appendChild(modal);
+}
+
+// Afficher le sélecteur de chapitre
+function showChapterSelector() {
+    if (!appState.manga) return;
+
+    const solution = appState.manga.solution;
+    let chapters = [];
+
+    if (solution === 1) {
+        return; // Pas de sélection pour solution 1
+    } else if (solution === 2) {
+        chapters = appState.manga.structure.chapters;
+    } else if (solution === 3) {
+        chapters = appState.manga.structure.tomes[appState.currentTomeIndex].chapters;
+    } else if (solution === 4) {
+        const tome = appState.manga.structure.tomes[appState.currentTomeIndex];
+        chapters = tome.types[appState.currentTypeIndex].chapters;
+    }
+
+    const modal = createModal('Sélectionner un chapitre', chapters.map((chapter, index) => ({
+        text: chapter.name,
+        onClick: () => {
+            appState.currentChapterIndex = index;
+            updateCurrentNames();
+            displayCurrentChapter();
+            closeModal();
+        }
+    })));
+
+    document.body.appendChild(modal);
+}
+
+// Créer un modal
+function createModal(title, items) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = closeModal;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.onclick = (e) => e.stopPropagation();
+
+    const modalTitle = document.createElement('h2');
+    modalTitle.textContent = title;
+    modalTitle.className = 'modal-title';
+
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+
+    items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'modal-item';
+        btn.textContent = item.text;
+        btn.onclick = item.onClick;
+        modalContent.appendChild(btn);
+    });
+
+    modal.appendChild(modalTitle);
+    modal.appendChild(modalContent);
+    overlay.appendChild(modal);
+
+    return overlay;
+}
+
+// Fermer le modal
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Gérer le scroll
+function handleScroll(e) {
+    appState.scrollPosition = e.target.scrollTop;
+    updateScrollButton();
+}
+
+// Mettre à jour le bouton de scroll
+function updateScrollButton() {
+    let scrollBtn = document.getElementById('scroll-top-btn');
+
+    // Ne pas afficher en mode plein écran
+    if (appState.isFullscreen) {
+        if (scrollBtn) scrollBtn.remove();
+        return;
+    }
+
+    // Afficher si on a scrollé plus de 300px
+    if (appState.scrollPosition > 300) {
+        if (!scrollBtn) {
+            scrollBtn = document.createElement('button');
+            scrollBtn.id = 'scroll-top-btn';
+            scrollBtn.className = 'scroll-top-btn';
+            scrollBtn.innerHTML = '⬆️';
+            scrollBtn.onclick = () => {
+                document.querySelector('.main-content').scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            };
+            document.body.appendChild(scrollBtn);
+        }
+    } else {
+        if (scrollBtn) scrollBtn.remove();
+    }
+}
+
+// Mettre à jour l'espacement des images
+function updateImageSpacing() {
+    const wrappers = document.querySelectorAll('.image-wrapper');
+    wrappers.forEach(wrapper => {
+        wrapper.style.marginBottom = `${appState.spacing}px`;
+    });
 }
 
 // Appliquer le thème
 function applyTheme(theme) {
     const body = document.body;
-
-    // Retirer tous les thèmes
     body.classList.remove('light-theme', 'forest-theme', 'night-theme');
 
-    // Appliquer le nouveau thème
     switch(theme) {
         case 'light':
             body.classList.add('light-theme');
@@ -161,28 +620,20 @@ function applyTheme(theme) {
         case 'night':
             body.classList.add('night-theme');
             break;
-        default:
-            // dark theme (par défaut)
-            break;
     }
-
-    console.log('Thème appliqué:', theme);
 }
 
 // Afficher les paramètres
 function showSettings() {
     showNotification('Paramètres à venir!', 'info');
-    console.log('Ouverture des paramètres');
 }
 
 // Système de notifications
 function showNotification(message, type = 'info') {
-    // Créer l'élément de notification
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
 
-    // Styles inline pour la notification
     notification.style.cssText = `
         position: fixed;
         top: 80px;
@@ -197,19 +648,19 @@ function showNotification(message, type = 'info') {
         font-weight: 500;
     `;
 
-    // Ajouter au body
     document.body.appendChild(notification);
 
-    // Retirer après 3 secondes
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => {
-            document.body.removeChild(notification);
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
         }, 300);
     }, 3000);
 }
 
-// Ajouter les animations pour les notifications
+// Animations
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideIn {
