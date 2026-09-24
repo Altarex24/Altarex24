@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Duel des Roues</title>
+<style>
+  :root { --bg: #0b0d14; --txt: #f4f6ff; --acc: #ffcc33; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--txt); font-family: "Trebuchet MS", "Arial Rounded MT Bold", Arial, sans-serif; }
+  #wrap { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; margin: 0 auto; top: 50%; transform: translateY(-50%); overflow: hidden; background: #000; }
+  #stage { width: 100%; height: 100%; display: block; }
+  #ui { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 20, .55); }
+  #ui.hidden { display: none; }
+  #play { font: bold clamp(16px, 3vw, 30px) inherit; font-family: inherit; padding: .7em 1.4em; border-radius: 999px; border: 4px solid #1f2330; background: var(--acc); color: #1f2330; cursor: pointer; box-shadow: 0 6px 0 #1f2330; }
+  #play:active { transform: translateY(4px); box-shadow: 0 2px 0 #1f2330; }
+  #bar { position: absolute; left: 0; bottom: 0; height: 5px; background: var(--acc); width: 0; }
+  .comic { font-family: "Arial Black", "Trebuchet MS", Impact, sans-serif; font-weight: 900; paint-order: stroke fill; stroke: #1f2330; stroke-linejoin: round; }
+  .o { stroke: #1f2330; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <svg id="stage" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="ui"><button id="play">▶ Lancer le film (avec le son)</button></div>
+  <div id="bar"></div>
+</div>
+<script>
+"use strict";
+// =====================================================================
+//  LE DUEL DES ROUES — film d'animation 2D (SVG + WebAudio)
+//  Tout est piloté par renderAt(t) : déterministe, donc exportable image par image.
+// =====================================================================
+const DUR = 44;
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("stage");
+const $ = id => document.getElementById(id);
+
+// ---------- utilitaires d'animation ----------
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const E = {
+  lin: k => k,
+  in: k => k * k * k,
+  out: k => 1 - (1 - k) ** 3,
+  io: k => (k < .5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2),
+  back: k => { const c = 1.9; return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2; },
+  bounce: k => { const n = 7.5625, d = 2.75; if (k < 1 / d) return n * k * k; if (k < 2 / d) return n * (k -= 1.5 / d) * k + .75; if (k < 2.5 / d) return n * (k -= 2.25 / d) * k + .9375; return n * (k -= 2.625 / d) * k + .984375; },
+};
+// piste : [[t, valeur, easing du segment qui se termine ici], ...]
+function track(t, keys) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    const [t1, v1, e] = keys[i];
+    if (t <= t1) {
+      const [t0, v0] = keys[i - 1];
+      const k = (E[e || "io"])((t - t0) / (t1 - t0 || 1));
+      return Array.isArray(v0) ? v0.map((x, j) => lerp(x, v1[j], k)) : lerp(v0, v1, k);
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+const inRange = (t, a, b) => t >= a && t < b;
+const rnd = (() => { let s = 12345; return () => ((s = (s * 16807) % 2147483647) / 2147483647); })();
+function el(parent, tag, attrs = {}, html) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (html !== undefined) e.innerHTML = html;
+  parent.appendChild(e); return e;
+}
+const show = (e, v) => { e.style.display = v ? "" : "none"; };
+function setMood(g, mood) { g.querySelectorAll("[data-m]").forEach(n => show(n, n.dataset.m.split(" ").includes(mood))); }
+
+// =====================================================================
+//  DESSINS (coordonnées locales ; personnages : pieds à (300, 625))
+// =====================================================================
+const C = { line: "#1f2330", skin: "#f6d2bb", skinD: "#e8b99c", grey: "#6c6b7b", greyL: "#807f90", greyD: "#57566a" };
+
+// ---- le héros : cheveux bleus, couronne, lunettes violettes, noeud papillon ----
+function heroHead() {
+  return `
+  <g data-part="crown"><path class="o" d="M258 196 L262 128 L282 160 L300 112 L318 160 L338 128 L342 196 Z" fill="#f5c531"/>
+    <circle cx="300" cy="150" r="7" fill="#e8413b" stroke="${C.line}" stroke-width="3"/><path d="M268 184 h64" stroke="#d99d16" stroke-width="4"/></g>
+  <path class="o" d="M240 212 Q232 260 244 290 L262 290 L258 222 Z" fill="#7a4b2a"/>
+  <path class="o" d="M360 212 Q368 260 356 290 L338 290 L342 222 Z" fill="#7a4b2a"/>
+  <rect class="o" x="244" y="196" width="112" height="104" rx="30" fill="${C.skin}"/>
+  <g data-m="smile victory"><path d="M282 280 Q300 294 318 280" fill="none" stroke="${C.line}" stroke-width="4" stroke-linecap="round"/></g>
+  <g data-m="grin shout"><path class="o" d="M278 272 Q300 304 322 272 Z" fill="#5a1f22"/><path d="M290 290 q10 -8 20 0 q-10 8 -20 0z" fill="#e8636b"/></g>
+  <g data-m="angry"><path d="M282 288 Q300 278 318 288" fill="none" stroke="${C.line}" stroke-width="5" stroke-linecap="round"/><path d="M288 284 h24" stroke="#fff" stroke-width="3"/></g>
+  <path class="o" d="M236 226 L244 176 L258 198 L266 152 L284 188 L296 136 L310 184 L326 146 L334 190 L350 160 L352 196 L366 186 L362 228 Q300 206 236 226 Z" fill="#2f86ea"/>
+  <path d="M266 168 L276 196 M296 150 L302 190 M326 160 L324 194" stroke="#76b8ff" stroke-width="5" stroke-linecap="round"/>
+  <g data-m="angry shout"><path d="M252 216 L292 230 M348 216 L308 230" stroke="${C.line}" stroke-width="8" stroke-linecap="round"/></g>
+  <path d="M248 232 L240 228 M352 232 L360 228" stroke="#d8a93a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M252 228 Q274 220 295 228 Q297 250 281 258 Q257 261 252 240 Z" fill="url(#verre)" stroke="#d8a93a" stroke-width="4"/>
+  <path d="M348 228 Q326 220 305 228 Q303 250 319 258 Q343 261 348 240 Z" fill="url(#verre)" stroke="#d8a93a" stroke-width="4"/>
+  <path d="M295 230 Q300 225 305 230" fill="none" stroke="#d8a93a" stroke-width="4"/>
+  <path d="M260 234 q6 -4 12 -4 M312 234 q6 -4 12 -4" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+  <g data-m="angry victory"><path d="M330 222 L334 234 L346 238 L334 242 L330 254 L326 242 L314 238 L326 234 Z" fill="#fff"/></g>`;
+}
+function heroTorso() {
+  return `
+  <rect class="o" x="236" y="298" width="128" height="182" rx="10" fill="url(#jean)"/>
+  <path d="M300 300 v160" stroke="#5a83b8" stroke-width="3" stroke-dasharray="6 5"/>
+  <path d="M250 340 h36 v14 h-36z M314 340 h36 v14 h-36z" fill="#7aa2d4" stroke="#4f78ad" stroke-width="3"/>
+  <path d="M362 302 L240 462" stroke="${C.line}" stroke-width="20" stroke-linecap="round"/>
+  <path d="M362 302 L240 462" stroke="#6f7d31" stroke-width="13" stroke-linecap="round"/>
+  <rect x="286" y="386" width="22" height="16" rx="3" fill="#b9bfc7" stroke="${C.line}" stroke-width="3" transform="rotate(-52 297 394)"/>
+  <rect class="o" x="236" y="460" width="128" height="18" rx="3" fill="#80858d"/>`;
+}
+function heroBow() {
+  return `<path class="o" d="M292 314 L308 314 L300 342 Z" fill="#d8282d"/>
+  <path class="o" d="M300 308 L258 286 Q246 308 258 330 Z" fill="#3fc6f5"/><path class="o" d="M300 308 L342 286 Q354 308 342 330 Z" fill="#3fc6f5"/>
+  <rect class="o" x="289" y="297" width="22" height="22" rx="7" fill="#5ad2fb"/>`;
+}
+function heroFull(id) {
+  return `<g id="${id}">
+    <g id="${id}-lL"><rect class="o" x="246" y="470" width="54" height="130" rx="6" fill="#3b3f48"/><path d="M252 500 l20 12 l-8 20 l24 10" fill="none" stroke="#5a606c" stroke-width="4"/><rect class="o" x="244" y="592" width="58" height="34" rx="7" fill="#c9c04f"/></g>
+    <g id="${id}-lR"><rect class="o" x="300" y="470" width="54" height="130" rx="6" fill="#3b3f48"/><path d="M318 520 q14 6 24 -6 q-4 16 10 24 q-16 2 -22 14 q-6 -14 -20 -14z" fill="#f2c9b1" stroke="#23262c" stroke-width="3"/><rect class="o" x="298" y="592" width="58" height="34" rx="7" fill="#c9c04f"/></g>
+    <g id="${id}-aL"><rect class="o" x="186" y="302" width="52" height="150" rx="12" fill="${C.skin}"/></g>
+    ${heroTorso()}
+    <g id="${id}-aR"><rect class="o" x="362" y="302" width="52" height="150" rx="12" fill="${C.skin}"/></g>
+    ${heroBow()}
+    <g id="${id}-h">${heroHead()}</g>
+  </g>`;
+}
+function heroBust(id) { // buste au volant : origine (300, 400)
+  return `<g id="${id}">
+    <rect class="o" x="236" y="298" width="128" height="120" rx="10" fill="url(#jean)"/>
+    <path d="M362 302 L270 420" stroke="${C.line}" stroke-width="20"/><path d="M362 302 L270 420" stroke="#6f7d31" stroke-width="13"/>
+    <g id="${id}-aL"><rect class="o" x="196" y="306" width="48" height="110" rx="12" fill="${C.skin}" transform="rotate(-28 220 316)"/></g>
+    <g id="${id}-aR"><rect class="o" x="356" y="306" width="48" height="110" rx="12" fill="${C.skin}" transform="rotate(28 380 316)"/></g>
+    ${heroBow()}
+    <g id="${id}-h">${heroHead()}</g>
+  </g>`;
+}
+
+// ---- l'ennemi : Shayanghy6545, gris, t-shirt bleu Roblox ----
+function enemyHead() {
+  return `
+  <rect class="o" x="244" y="196" width="112" height="104" rx="30" fill="${C.greyL}"/>
+  <path d="M256 214 q20 -10 48 -8" stroke="#9a99ab" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <g data-m="smile angry shock"><ellipse cx="282" cy="236" rx="5" ry="8" fill="${C.line}"/><ellipse cx="318" cy="236" rx="5" ry="8" fill="${C.line}"/></g>
+  <g data-m="laugh"><path d="M272 240 q10 -12 20 0 M308 240 q10 -12 20 0" stroke="${C.line}" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+  <g data-m="dizzy"><path d="M282 236 m-8 0 a8 8 0 1 1 8 8 a5 5 0 1 1 -5 -5 a2 2 0 1 1 2 2" stroke="${C.line}" stroke-width="3" fill="none"/><path d="M318 236 m-8 0 a8 8 0 1 1 8 8 a5 5 0 1 1 -5 -5 a2 2 0 1 1 2 2" stroke="${C.line}" stroke-width="3" fill="none"/></g>
+  <g data-m="angry"><path d="M266 220 L294 228 M334 220 L306 228" stroke="${C.line}" stroke-width="7" stroke-linecap="round"/></g>
+  <g data-m="smile"><path d="M276 262 Q300 288 324 262" fill="none" stroke="${C.line}" stroke-width="4.5" stroke-linecap="round"/></g>
+  <g data-m="laugh"><path class="o" d="M272 258 Q300 304 328 258 Z" fill="#5a1f22"/><path d="M288 282 q12 -9 24 0 q-12 10 -24 0z" fill="#e8636b"/></g>
+  <g data-m="shock"><ellipse class="o" cx="300" cy="276" rx="11" ry="14" fill="#5a1f22"/><path d="M350 214 q8 14 0 20 q-8 -6 0 -20z" fill="#8fd8ff" stroke="${C.line}" stroke-width="2.5"/></g>
+  <g data-m="dizzy"><path d="M280 276 q7 -8 14 0 q7 8 14 0 q7 -8 12 0" stroke="${C.line}" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+  <g data-m="angry"><path d="M282 282 Q300 268 318 282" fill="none" stroke="${C.line}" stroke-width="5" stroke-linecap="round"/></g>`;
+}
+function enemyShirt(h = 150) {
+  return `<rect class="o" x="236" y="298" width="128" height="${h}" rx="10" fill="#2cb5f5"/>
+  <path d="M236 318 q64 14 128 0" stroke="#1d9bd8" stroke-width="4" fill="none"/>
+  <g transform="rotate(14 332 344)"><rect x="322" y="330" width="22" height="28" rx="2" fill="#fff"/><rect x="330" y="340" width="6" height="8" fill="#2cb5f5"/></g>`;
+}
+function enemyFull(id) {
+  return `<g id="${id}">
+    <g id="${id}-lL"><rect class="o" x="248" y="470" width="52" height="75" fill="#dcdde6"/><rect class="o" x="248" y="542" width="52" height="16" fill="#36b8f0"/><rect class="o" x="246" y="556" width="56" height="70" rx="14" fill="${C.grey}"/></g>
+    <g id="${id}-lR"><rect class="o" x="300" y="470" width="52" height="75" fill="#dcdde6"/><rect class="o" x="300" y="542" width="52" height="16" fill="#36b8f0"/><rect class="o" x="298" y="556" width="56" height="70" rx="14" fill="${C.grey}"/></g>
+    <g id="${id}-aL"><rect class="o" x="186" y="302" width="52" height="150" rx="16" fill="${C.grey}"/></g>
+    <path class="o" d="M236 436 H364 V494 L340 488 L318 498 L300 486 L280 498 L258 488 L236 494 Z" fill="#1fa6e8"/>
+    ${enemyShirt(150)}
+    <g id="${id}-aR"><rect class="o" x="362" y="302" width="52" height="150" rx="16" fill="${C.grey}"/>
+      <g id="${id}-wave"><rect class="o" x="364" y="436" width="14" height="30" rx="6" fill="${C.greyL}"/><rect class="o" x="380" y="440" width="14" height="34" rx="6" fill="${C.greyL}"/><rect class="o" x="396" y="438" width="14" height="30" rx="6" fill="${C.greyL}"/></g></g>
+    <g id="${id}-h">${enemyHead()}</g>
+  </g>`;
+}
+function enemyBust(id) {
+  return `<g id="${id}">
+    ${enemyShirt(120)}
+    <g id="${id}-aL"><rect class="o" x="196" y="306" width="48" height="110" rx="14" fill="${C.grey}" transform="rotate(-28 220 316)"/></g>
+    <g id="${id}-aR"><rect class="o" x="356" y="306" width="48" height="110" rx="14" fill="${C.grey}" transform="rotate(28 380 316)"/></g>
+    <g id="${id}-h">${enemyHead()}</g>
+  </g>`;
+}
+
+// ---- roues ----
+function wheel(id, cx, cy, r, hub = "#c9c7d6", tire = "#23242b") {
+  const spokes = [...Array(5)].map((_, i) => { const a = i * 72 * Math.PI / 180; return `M0 0 L${(Math.cos(a) * r * .42).toFixed(1)} ${(Math.sin(a) * r * .42).toFixed(1)}`; }).join("");
+  return `<g transform="translate(${cx} ${cy})"><g id="${id}">
+    <circle r="${r}" fill="${tire}" stroke="${C.line}" stroke-width="4"/>
+    <circle r="${r - 5}" fill="none" stroke="#3b3c46" stroke-width="6" stroke-dasharray="7 6"/>
+    <circle r="${r * .5}" fill="${hub}" stroke="${C.line}" stroke-width="3"/>
+    <path d="${spokes}" stroke="#8d8b9c" stroke-width="5" stroke-linecap="round"/>
+    <circle r="${r * .12}" fill="#8d8b9c"/></g></g>`;
+}
+
+// ---- le gros camion (face à droite, origine au sol) ----
+function truckSVG() {
+  return `<g id="truck">
+    <g id="tr-puffs"></g>
+    <g id="tr-flames" style="display:none">
+      <path id="fl1" d="M-25 -335 q-18 -40 0 -80 q6 30 14 10 q10 40 -14 70z" fill="#ff8a1f" stroke="${C.line}" stroke-width="3"/>
+      <path id="fl2" d="M1 -335 q-18 -40 0 -80 q6 30 14 10 q10 40 -14 70z" fill="#ffb21f" stroke="${C.line}" stroke-width="3"/>
+    </g>
+    <!-- pots d'échappement -->
+    <g class="o" fill="#b9b8cc"><rect x="-34" y="-330" width="18" height="230"/><rect x="-8" y="-330" width="18" height="230"/></g>
+    <path d="M-34 -330 l6 -14 h14 l-2 14z M-8 -330 l6 -14 h14 l-2 14z" fill="#d6d5e4" stroke="${C.line}" stroke-width="3"/>
+    <!-- plateau arrière -->
+    <path class="o" d="M-225 -175 H-180 V-150 H0 V-95 H-225 Z" fill="#c8672d"/>
+    <path d="M-222 -172 H-183 M-180 -147 H-3" stroke="#e08a4c" stroke-width="5"/>
+    <path class="o" d="M-205 -95 a50 50 0 0 1 100 0 M-125 -95 a50 50 0 0 1 100 0" fill="#9f4d1f"/>
+    <!-- paroi arrière de la cabine -->
+    <rect class="o" x="0" y="-255" width="150" height="160" fill="#a9521f"/>
+    <path class="o" d="M138 -275 L152 -205 L145 -205 L132 -275 Z" fill="#dbe7ef"/>
+    <path d="M136 -272 L150 -208" stroke="#fff" stroke-width="2" opacity=".7"/>
+    <g id="tr-seat" transform="translate(70 -200) scale(.44) translate(-300 -400)"></g>
+    <!-- volant -->
+    <path d="M118 -186 l-20 -12" stroke="${C.line}" stroke-width="7" stroke-linecap="round"/>
+    <!-- portière / capot -->
+    <path class="o" d="M0 -210 H150 V-95 H0 Z" fill="#c8672d"/>
+    <path d="M4 -206 H146" stroke="#e08a4c" stroke-width="5"/>
+    <rect x="20" y="-190" width="110" height="80" rx="4" fill="none" stroke="#9f4d1f" stroke-width="4"/>
+    <rect x="100" y="-170" width="18" height="6" rx="3" fill="#8a4119"/>
+    <path class="o" d="M150 -180 H232 V-95 H150 Z" fill="#c8672d"/>
+    <path d="M152 -176 H229" stroke="#e08a4c" stroke-width="6"/>
+    <rect class="o" x="232" y="-150" width="12" height="54" fill="#2b2e38"/>
+    <path d="M234 -140 h8 M234 -128 h8 M234 -116 h8 M234 -104 h8" stroke="#555a68" stroke-width="3"/>
+    <rect id="tr-light" class="o" x="226" y="-172" width="16" height="20" rx="3" fill="#ffd93b"/>
+    <path id="tr-beam" d="M242 -170 L520 -230 L520 -90 L242 -154 Z" fill="#fff6b0" opacity="0"/>
+    <rect class="o" x="224" y="-96" width="36" height="34" rx="4" fill="#d9d8e6"/>
+    <path d="M228 -84 h28 M228 -74 h28" stroke="#a7a6b8" stroke-width="3"/>
+    <rect class="o" x="24" y="-96" width="86" height="24" rx="5" fill="#8a8a9c"/>
+    ${wheel("tw1", -160, -45, 45)}${wheel("tw2", -80, -45, 45)}${wheel("tw3", 178, -45, 45)}
+  </g>`;
+}
+// ---- la petite voiture turquoise (face à droite, origine au sol) ----
+function carSVG() {
+  return `<g id="car">
+    <rect class="o" x="-58" y="-104" width="26" height="34" rx="5" fill="#2a2d38"/>
+    <g id="car-seat" transform="translate(-22 -84) scale(.42) translate(-300 -400)"></g>
+    <path class="o" d="M34 -84 L44 -130 L50 -130 L42 -84 Z" fill="#dbe7ef"/>
+    <path class="o" d="M-112 -36 V-76 Q-112 -86 -100 -86 H26 L40 -80 H96 Q114 -78 114 -62 V-36 Z" fill="#3fd3dc"/>
+    <path d="M-106 -80 H24 M42 -75 H96" stroke="#8ff0f4" stroke-width="5" stroke-linecap="round"/>
+    <path d="M-112 -52 H114" stroke="#27a9b3" stroke-width="5"/>
+    <path class="o" d="M-100 -36 a30 30 0 0 1 60 0 M44 -36 a30 30 0 0 1 60 0" fill="#27a9b3"/>
+    <rect id="car-light" class="o" x="102" y="-74" width="14" height="14" rx="3" fill="#ffd93b"/>
+    <rect class="o" x="108" y="-44" width="14" height="14" rx="3" fill="#8b8b9c"/>
+    <rect class="o" x="-122" y="-44" width="14" height="14" rx="3" fill="#8b8b9c"/>
+    ${wheel("cw1", -70, -26, 26, "#b8b7c6", "#2e2f38")}${wheel("cw2", 74, -26, 26, "#b8b7c6", "#2e2f38")}
+  </g>`;
+}
+
+// =====================================================================
+//  CONSTRUCTION DE LA SCÈNE
+// =====================================================================
+svg.innerHTML = `
+<defs>
+  <linearGradient id="verre" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b2a86"/><stop offset="1" stop-color="#c89af0"/></linearGradient>
+  <linearGradient id="jean" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8db4e2"/><stop offset="1" stop-color="#6d97cc"/></linearGradient>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4fa9ee"/><stop offset=".7" stop-color="#bfe6ff"/><stop offset="1" stop-color="#e8f7ff"/></linearGradient>
+  <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a6ecf2"/><stop offset=".35" stop-color="#4cc3d9"/><stop offset="1" stop-color="#1f8bb8"/></linearGradient>
+  <pattern id="studs" width="46" height="30" patternUnits="userSpaceOnUse">
+    <rect width="46" height="30" fill="#1f7ff0"/><ellipse cx="12" cy="8" rx="11" ry="6" fill="#6cc0ff"/><ellipse cx="12" cy="8" rx="6" ry="3" fill="#b4e2ff"/>
+    <ellipse cx="35" cy="23" rx="11" ry="6" fill="#4aa8ff"/><ellipse cx="35" cy="23" rx="6" ry="3" fill="#9ad6ff"/></pattern>
+  <pattern id="waves" width="120" height="40" patternUnits="userSpaceOnUse"><path d="M10 20 q15 -10 30 0 M70 34 q12 -8 24 0" stroke="#fff" stroke-width="3" fill="none" opacity=".45" stroke-linecap="round"/></pattern>
+  <radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+  <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6b0"/><stop offset="1" stop-color="#fff6b0" stop-opacity="0"/></radialGradient>
+  <clipPath id="clipScreen"><rect width="1280" height="720"/></clipPath>
+  <clipPath id="pA"><path d="M0 0 H470 L380 720 H0Z"/></clipPath>
+  <clipPath id="pB"><path d="M478 0 H900 L810 720 H388Z"/></clipPath>
+  <clipPath id="pC"><path d="M908 0 H1280 V720 H818Z"/></clipPath>
+  <clipPath id="insetClip"><circle cx="1105" cy="545" r="140"/></clipPath>
+</defs>
+
+<!-- ===================== MONDE ===================== -->
+<g id="world"><g id="cam">
+  <rect x="-4000" y="-2500" width="9000" height="2840" fill="url(#sky)"/>
+  <g fill="#fff" opacity=".9"><g id="cloudsW">
+    <ellipse cx="200" cy="120" rx="90" ry="30"/><ellipse cx="240" cy="96" rx="50" ry="36"/>
+    <ellipse cx="1300" cy="80" rx="110" ry="34"/><ellipse cx="1350" cy="58" rx="60" ry="40"/>
+    <ellipse cx="-500" cy="150" rx="80" ry="26"/><ellipse cx="2100" cy="140" rx="90" ry="28"/></g></g>
+  <rect x="-4000" y="330" width="9000" height="1400" fill="url(#sea)"/>
+  <rect x="-4000" y="330" width="9000" height="1400" fill="url(#waves)"/>
+  <!-- plate-forme à clous bleus -->
+  <path d="M-150 520 H3200 V820 H-150 Z" fill="url(#studs)"/>
+  <path d="M-150 522 H3200" stroke="#0f58b8" stroke-width="10"/><path d="M-150 516 H3200" stroke="#bfe6ff" stroke-width="5"/>
+  <rect x="-150" y="820" width="3350" height="70" fill="#0f58b8"/>
+  <path d="M-150 520 V890" stroke="#0a3f86" stroke-width="10"/>
+  <path d="M-150 520 L-150 890 L-190 900 L-190 530 Z" fill="#0c4a9c"/>
+  <path d="M640 690 l60 -40 l-20 -46 l58 30 l48 -56 l6 70 l70 10 l-66 30 l26 60 l-60 -32 l-50 50 l-8 -64z" fill="#10204a" opacity=".85"/>
+  <g id="tireMarks"></g>
+  <g id="dust"></g>
+  <g id="shock"></g>
+  <g id="truckPos">${truckSVG()}</g>
+  <g id="carPos">${carSVG()}</g>
+  <g id="heroWorld">${heroFull("hw")}</g>
+  <g id="enemyWorld">${enemyFull("ew")}</g>
+  <g id="bubbleW" style="display:none">
+    <path class="o" d="M1160 190 h330 a20 20 0 0 1 20 20 v60 a20 20 0 0 1 -20 20 h-120 l30 40 l-70 -40 h-170 a20 20 0 0 1 -20 -20 v-60 a20 20 0 0 1 20 -20z" fill="#fff"/>
+    <text x="1325" y="252" text-anchor="middle" class="comic" font-size="30" fill="#1fa6e8" stroke-width="0">Trop lent, ton camion !</text>
+  </g>
+  <g id="sparks"></g>
+  <g id="floatEnemy" style="display:none">
+    <g id="fe-body" transform="translate(0 0)">
+      <g transform="translate(-300 -400) scale(1)">${enemyBust("feb")}</g>
+      <ellipse class="o" cx="0" cy="10" rx="120" ry="34" fill="#ff5a5a"/>
+      <path d="M-100 0 q20 -14 40 -16 M40 -18 q30 2 50 14" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+    </g>
+  </g>
+  <g id="sunkCar" style="display:none"></g>
+  <rect x="-4000" y="705" width="3850" height="1200" fill="#1f8bb8" opacity=".82"/>
+  <path d="M-4000 705 H-150" stroke="#bfe9ff" stroke-width="5"/>
+  <g id="splash"></g>
+</g></g>
+
+<!-- ===================== GROS PLANS ===================== -->
+<g id="closeup" style="display:none">
+  <rect width="1280" height="720" id="cu-bg" fill="#3aa0ff"/>
+  <g id="cu-lines" transform="translate(640 380)"></g>
+  <g id="cu-char" transform="translate(640 700) scale(1.7) translate(-300 -400)"><g id="cu-hero">${heroBust("cuh")}</g><g id="cu-enemy">${enemyBust("cue")}</g></g>
+  <text id="cu-text" x="640" y="120" text-anchor="middle" class="comic" font-size="64" fill="#fff" stroke-width="12"></text>
+</g>
+
+<!-- ===================== ÉCRAN PARTAGÉ ===================== -->
+<g id="split" style="display:none">
+  <rect width="1280" height="720" fill="#1f2330"/>
+  <g id="spA" clip-path="url(#pA)"><rect width="1280" height="720" fill="#ff7a1f"/>
+    <g id="spA-lines" transform="translate(230 380)"></g>
+    <g transform="translate(230 400) scale(2.6)">${wheel("spW", 0, 0, 45)}</g>
+    <g id="spA-smoke" fill="#e9e9ef" stroke="${C.line}" stroke-width="4"><circle cx="90" cy="600" r="50"/><circle cx="170" cy="640" r="60"/><circle cx="330" cy="630" r="55"/></g></g>
+  <g id="spB" clip-path="url(#pB)"><rect width="1280" height="720" fill="#e8413b"/>
+    <g transform="translate(645 660) scale(1.35) translate(-300 -400)">${heroBust("sph")}</g>
+    <text x="645" y="110" text-anchor="middle" class="comic" font-size="54" fill="#ffd93b" stroke-width="10">GRRR !</text></g>
+  <g id="spC" clip-path="url(#pC)"><rect width="1280" height="720" fill="#2cb5f5"/>
+    <g transform="translate(1060 660) scale(1.35) translate(-300 -400)">${enemyBust("spe")}</g>
+    <text x="1060" y="110" text-anchor="middle" class="comic" font-size="54" fill="#fff" stroke-width="10">Oh oh...</text></g>
+  <path d="M470 0 L380 720 M478 0 L388 720 M900 0 L810 720 M908 0 L818 720" stroke="#1f2330" stroke-width="10"/>
+</g>
+
+<!-- ===================== ÉCRAN VS ===================== -->
+<g id="vs" style="display:none">
+  <rect width="1280" height="720" fill="#1f2330"/>
+  <g id="vsL"><path d="M0 0 H700 L580 720 H0Z" fill="#ff7a1f"/><g id="vsL-lines" transform="translate(300 380)"></g>
+    <g transform="translate(320 640) scale(1.3) translate(-300 -400)">${heroBust("vsh")}</g>
+    <text x="300" y="690" text-anchor="middle" class="comic" font-size="50" fill="#fff" stroke-width="10">LE ROI BLEU</text>
+    <text x="300" y="100" text-anchor="middle" class="comic" font-size="28" fill="#ffd93b" stroke-width="7">+ SON GROS CAMION</text></g>
+  <g id="vsR"><path d="M700 0 H1280 V720 H580Z" fill="#2cb5f5"/><g id="vsR-lines" transform="translate(980 380)"></g>
+    <g transform="translate(990 640) scale(1.3) translate(-300 -400)">${enemyBust("vse")}</g>
+    <text x="990" y="690" text-anchor="middle" class="comic" font-size="46" fill="#fff" stroke-width="10">Shayanghy6545</text>
+    <text x="990" y="100" text-anchor="middle" class="comic" font-size="28" fill="#ffd93b" stroke-width="7">+ SA PETITE VOITURE</text></g>
+  <path id="bolt" d="M700 -10 L650 250 L720 260 L610 730 L690 470 L620 460 L720 -10Z" fill="#ffe14a" stroke="#1f2330" stroke-width="6"/>
+  <text id="vsText" x="650" y="420" text-anchor="middle" class="comic" font-size="190" fill="#ffd93b" stroke-width="18">VS</text>
+</g>
+
+<!-- ===================== TITRE ===================== -->
+<g id="title">
+  <rect width="1280" height="720" fill="#1f2330"/>
+  <g id="t-stripes"></g>
+  <g id="t-main" transform="translate(640 300)"><text text-anchor="middle" class="comic" font-size="150" fill="#ffd93b" stroke-width="20">LE DUEL</text></g>
+  <g id="t-sub" transform="translate(640 450)"><text text-anchor="middle" class="comic" font-size="110" fill="#fff" stroke-width="18">DES ROUES</text></g>
+  <g id="t-tag" transform="translate(640 560)"><text text-anchor="middle" class="comic" font-size="36" fill="#8fd8ff" stroke-width="8">Gros camion  ⚡  Petite voiture</text></g>
+</g>
+
+<!-- ===================== FIN ===================== -->
+<g id="end" style="display:none">
+  <rect width="1280" height="720" fill="#1f2330"/>
+  <g id="e-fin" transform="translate(640 360)"><text text-anchor="middle" class="comic" font-size="200" fill="#ffd93b" stroke-width="22" y="40">FIN</text></g>
+  <g id="e-sub" transform="translate(640 520)"><text text-anchor="middle" class="comic" font-size="48" fill="#fff" stroke-width="10">... ou pas ?</text></g>
+  <g id="e-car" transform="translate(1400 680) scale(.5)"><g transform="scale(-1 1)">${carSVG().replace(/id="/g, 'id="end-')}</g></g>
+</g>
+
+<!-- ===================== SURCOUCHES ===================== -->
+<g id="speedLines" style="display:none"></g>
+<g id="confetti"></g>
+<g id="inset" style="display:none">
+  <circle cx="1105" cy="545" r="146" fill="#1f2330"/>
+  <g clip-path="url(#insetClip)"><rect x="960" y="400" width="300" height="300" fill="#7fd0f5"/><rect x="960" y="600" width="300" height="100" fill="#2a86d6"/>
+    <g id="in-enemy" transform="translate(1105 640) scale(.55) translate(-300 -400)">${enemyBust("ine")}</g>
+    <rect x="960" y="630" width="300" height="80" fill="#2a86d6" opacity=".85"/>
+    <g id="in-fist"><rect class="o" x="1160" y="480" width="34" height="40" rx="10" fill="${C.grey}"/></g></g>
+  <circle cx="1105" cy="545" r="140" fill="none" stroke="#ffd93b" stroke-width="10"/>
+  <text x="1105" y="395" text-anchor="middle" class="comic" font-size="30" fill="#fff" stroke-width="7">Je reviendrai !!</text>
+</g>
+<g id="texts"></g>
+<rect id="lbTop" x="0" y="-60" width="1280" height="60" fill="#000"/>
+<rect id="lbBot" x="0" y="720" width="1280" height="60" fill="#000"/>
+<rect width="1280" height="720" fill="url(#vig)" id="vignette" opacity=".35" pointer-events="none"/>
+<rect id="flash" width="1280" height="720" fill="#fff" opacity="0" pointer-events="none"/>
+`;
+
+// ---------- éléments générés ----------
+function rays(g, n, color, len = 1100) {
+  let s = "";
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, b = a + Math.PI / n * .55;
+    s += `<path d="M0 0 L${(Math.cos(a) * len).toFixed(0)} ${(Math.sin(a) * len).toFixed(0)} L${(Math.cos(b) * len).toFixed(0)} ${(Math.sin(b) * len).toFixed(0)}Z" fill="${color}"/>`;
+  }
+  g.innerHTML = s;
+}
+rays($("cu-lines"), 28, "rgba(255,255,255,.22)");
+rays($("spA-lines"), 20, "rgba(255,255,255,.22)");
+rays($("vsL-lines"), 24, "rgba(255,255,255,.18)");
+rays($("vsR-lines"), 24, "rgba(255,255,255,.18)");
+{ let s = ""; for (let i = -8; i < 30; i++) s += `<path d="M${i * 90} 0 l120 0 l-300 720 l-120 0z" fill="${i % 2 ? "#2b3144" : "#232838"}"/>`; $("t-stripes").innerHTML = s; }
+// lignes de vitesse (écran)
+const speedN = 26, speedEls = [];
+for (let i = 0; i < speedN; i++) speedEls.push(el($("speedLines"), "rect", { height: (2 + rnd() * 5).toFixed(1), fill: "#fff", opacity: (.35 + rnd() * .5).toFixed(2), rx: 3 }));
+const speedData = speedEls.map(() => ({ y: rnd() * 720, len: 120 + rnd() * 380, sp: 1800 + rnd() * 2200, off: rnd() * 3000 }));
+// fumée d'échappement (dans le repère du camion)
+const puffEls = []; for (let i = 0; i < 44; i++) puffEls.push(el($("tr-puffs"), "circle", { class: "o", "stroke-width": 3 }));
+// poussière (monde)
+const dustEls = []; for (let i = 0; i < 40; i++) dustEls.push(el($("dust"), "circle", { fill: "#dfe9f7", stroke: "#1f2330", "stroke-width": 3 }));
+// étincelles
+const sparkEls = [], sparkData = [];
+for (let i = 0; i < 36; i++) { sparkEls.push(el($("sparks"), "path", { stroke: i % 3 ? "#ffd93b" : "#ff8a1f", "stroke-width": 5, "stroke-linecap": "round" })); const a = -Math.PI * (.05 + rnd() * .9); sparkData.push({ vx: Math.cos(a) * (250 + rnd() * 450), vy: Math.sin(a) * (300 + rnd() * 500) }); }
+// ondes de choc du klaxon
+const shockEls = []; for (let i = 0; i < 5; i++) shockEls.push(el($("shock"), "ellipse", { fill: "none", stroke: "#fff", "stroke-width": 10 }));
+// éclaboussures
+const dropEls = [], dropData = [];
+for (let i = 0; i < 40; i++) { dropEls.push(el($("splash"), "circle", { fill: "#e6f7ff", stroke: "#1f2330", "stroke-width": 3 })); const a = -Math.PI * (.15 + rnd() * .7); dropData.push({ vx: Math.cos(a) * (120 + rnd() * 380), vy: Math.sin(a) * (500 + rnd() * 600), r: 6 + rnd() * 12 }); }
+const splashCol = el($("splash"), "path", { fill: "#e6f7ff", stroke: "#1f2330", "stroke-width": 5 });
+// bulles
+const bubEls = []; for (let i = 0; i < 12; i++) bubEls.push(el($("splash"), "circle", { fill: "none", stroke: "#e6f7ff", "stroke-width": 3 }));
+// confettis
+const confEls = [], confData = [];
+const confCols = ["#ffd93b", "#ff5a5a", "#3fd3dc", "#8b5cf6", "#7ee06a", "#ff8a1f", "#fff"];
+for (let i = 0; i < 130; i++) { confEls.push(el($("confetti"), "rect", { width: 10 + rnd() * 8, height: 6 + rnd() * 6, fill: confCols[i % confCols.length] })); confData.push({ x: rnd() * 1280, d: rnd() * 1.6, sp: 160 + rnd() * 200, sw: 20 + rnd() * 50, rs: 200 + rnd() * 500 }); }
+// voiture coulée (copie simplifiée)
+$("sunkCar").innerHTML = `<g transform="rotate(170) scale(1.3)">${carSVG().replace(/id="/g, 'id="sunk-')}</g>`;
+
+// ---------- textes BD ----------
+const TEXTS = [
+  { t0: 7.25, t1: 8.8, s: "VROOOM !", x: 380, y: 170, size: 110, fill: "#ff8a1f", rot: -7 },
+  { t0: 16.95, t1: 17.28, s: "3", x: 640, y: 380, size: 240, fill: "#fff", rot: 0 },
+  { t0: 17.28, t1: 17.61, s: "2", x: 640, y: 380, size: 240, fill: "#fff", rot: 0 },
+  { t0: 17.61, t1: 17.94, s: "1", x: 640, y: 380, size: 240, fill: "#fff", rot: 0 },
+  { t0: 17.94, t1: 18.6, s: "GO !", x: 640, y: 400, size: 250, fill: "#7ee06a", rot: -6 },
+  { t0: 20.15, t1: 20.95, s: "ESQUIVÉ !", x: 640, y: 150, size: 100, fill: "#3fd3dc", rot: 5 },
+  { t0: 22.6, t1: 23.2, s: "BAM !", x: 700, y: 200, size: 170, fill: "#ffd93b", rot: -10 },
+  { t0: 24.45, t1: 25.0, s: "TURBO !", x: 640, y: 150, size: 120, fill: "#ff5a1f", rot: -5 },
+  { t0: 29.0, t1: 30.0, s: "HOOOONK !!", x: 640, y: 220, size: 150, fill: "#ffd93b", rot: -4 },
+  { t0: 31.05, t1: 31.9, s: "PLOUF !", x: 640, y: 220, size: 150, fill: "#8fd8ff", rot: 6 },
+  { t0: 33.8, t1: 40, s: "VICTOIRE !", x: 330, y: 190, size: 105, fill: "#ffd93b", rot: -7 },
+  { t0: 34.7, t1: 40, s: "Le Roi Bleu remporte le duel !", x: 470, y: 665, size: 42, fill: "#fff", rot: 0 },
+];
+for (const tx of TEXTS) {
+  tx.g = el($("texts"), "g");
+  el(tx.g, "text", { "text-anchor": "middle", class: "comic", "font-size": tx.size, fill: tx.fill, "stroke-width": Math.max(8, tx.size / 9), y: tx.size * .35 }, tx.s);
+}
+
+// =====================================================================
+//  TIMELINE
+// =====================================================================
+const GROUND = 600, TS = 1.25, CS = 1.3, PS = .55; // échelles camion / voiture / perso
+const FLASHES = [[3.05, .25], [10.55, .2], [13.05, .2], [17.0, .12], [22.6, .22], [29.0, .25], [31.0, .15], [33.5, .3], [40.0, .25]];
+const SHAKES = [[7.2, 1.1, 6], [10.6, .45, 14], [15.8, .5, 4], [22.6, .55, 20], [29.0, .9, 16], [31.0, .4, 10]];
+
+function scene(t) {
+  if (t < 3.2) return "title";
+  if (t < 10) return "world";
+  if (t < 13.2) return "vs";
+  if (t < 21.0) return "world";
+  if (t < 21.8) return "cuEnemy";
+  if (t < 23.2) return "world";
+  if (t < 24.0) return "cuHero";
+  if (t < 25.0) return "world";
+  if (t < 27.0) return "split";
+  if (t < 40) return "world";
+  return "end";
+}
+// positions des véhicules
+function truckState(t) {
+  let x, dir = 1, rot = 0;
+  if (t < 17) x = 900;
+  else x = track(t, [[17, 450], [18.2, 450], [20.0, 880, "in"], [20.8, 950, "out"], [22.6, 950], [23.2, 1250, "out"], [27.0, 1250], [29.0, 900, "in"]]);
+  if (t >= 24.0) dir = t < 24.45 ? Math.cos((t - 24.0) / .45 * Math.PI) : -1;
+  if (inRange(t, 22.6, 23.6)) rot = -Math.sin((t - 22.6) * 22) * 7 * (1 - (t - 22.6));
+  if (inRange(t, 29.0, 29.4)) rot = Math.sin((t - 29) * 40) * 2;
+  let y = GROUND;
+  const engine = t >= 7.2;
+  if (engine) y -= Math.abs(Math.sin(t * 38)) * (inRange(t, 7.2, 8.4) ? 5 : 1.5);
+  return { x, y, dir, rot, engine };
+}
+function carState(t) {
+  let x, y = GROUND, dir = -1, rot = 0, pivot = 0, vis = true;
+  if (t < 17) { x = 1600; if (inRange(t, 15.8, 17)) { rot = Math.sin(clamp((t - 15.8) / 1.2) * Math.PI) * 16; pivot = 74; } }
+  else if (t < 20.0) x = track(t, [[17, 1500], [18.2, 1500], [20.0, 1030, "in"]]);
+  else if (t < 20.9) { const k = (t - 20) / .9; x = lerp(1030, 330, k); y = GROUND - Math.sin(k * Math.PI) * 300; rot = -k * 360; }
+  else if (t < 21.8) x = 330;
+  else {
+    dir = 1;
+    if (t < 27) x = track(t, [[21.8, 330], [22.0, 300], [22.6, 480, "in"], [23.2, 250, "out"]]);
+    else if (t < 29.25) x = track(t, [[27, 150], [29.0, 330, "in"]]);
+    else if (t < 31.0) { const k = (t - 29.25) / 1.75; x = lerp(330, -420, E.out(k)); y = GROUND - (Math.sin(k * Math.PI) * 360) + k * 110; rot = -k * 900; }
+    else { vis = false; x = -420; }
+  }
+  if (t >= 18.2 && t < 29.25 && !(t >= 20 && t < 20.9)) y -= Math.abs(Math.sin(t * 45)) * 1.5;
+  return { x, y, dir, rot, pivot, vis };
+}
+function camera(t) {
+  let c;
+  if (t < 10) c = track(t, [[3.2, [600, 420, 1]], [6.0, [760, 420, 1]], [6.8, [880, 420, 1.05]], [7.2, [985, 370, 1.35], "out"], [8.6, [950, 400, 1.15]], [10, [950, 400, 1.22]]]);
+  else if (t < 17) c = track(t, [[13.2, [1480, 420, 1]], [15.0, [1500, 400, 1.3]], [15.6, [1580, 430, 1.1]], [17, [1600, 440, 1.25]]]);
+  else if (t < 18.2) c = track(t, [[17, [975, 430, .82]], [18.2, [975, 430, .9]]]);
+  else if (t < 20) { const tr = truckState(t), ca = carState(t); c = [(tr.x + ca.x) / 2, 420, track(t, [[18.2, .9], [20, 1.1]])]; }
+  else if (t < 21) { const ca = carState(t); c = [ca.x, 380, 1.15]; }
+  else if (t < 23.2) c = track(t, [[21.8, [620, 430, .95]], [22.55, [620, 430, 1.05]], [22.65, [640, 430, 1.3], "out"], [23.2, [800, 430, 1.1]]]);
+  else if (t < 27) c = track(t, [[24.0, [1250, 400, 1.2]], [25, [1230, 380, 1.4]]]);
+  else if (t < 29.25) { const tr = truckState(t), ca = carState(t); c = t < 29 ? [(tr.x + ca.x) / 2, 420, track(t, [[27, .95], [29, 1.12]])] : [560, 420, 1.35]; }
+  else if (t < 31) { const ca = carState(t); c = [Math.max(-300, ca.x + 120), Math.min(420, ca.y - 60), .9]; }
+  else if (t < 33.5) c = track(t, [[31, [-330, 560, 1.1]], [31.4, [-360, 600, 1.55], "out"], [33.5, [-360, 610, 1.6]]]);
+  else c = track(t, [[33.5, [760, 330, .95]], [40, [790, 320, 1.08]]]);
+  let sx = 0, sy = 0;
+  for (const [t0, d, a] of SHAKES) if (inRange(t, t0, t0 + d)) { const k = 1 - (t - t0) / d; sx += Math.sin(t * 91) * a * k; sy += Math.cos(t * 73) * a * k; }
+  return { x: c[0], y: c[1], z: c[2], sx, sy };
+}
+
+// =====================================================================
+//  RENDU D'UNE IMAGE
+// =====================================================================
+const cache = {};
+const g = id => cache[id] || (cache[id] = $(id));
+function setT(id, tr) { g(id).setAttribute("transform", tr); }
+
+function renderAt(t) {
+  const sc = scene(t);
+  show(g("title"), sc === "title"); show(g("world"), sc === "world"); show(g("vs"), sc === "vs");
+  show(g("closeup"), sc === "cuEnemy" || sc === "cuHero"); show(g("split"), sc === "split"); show(g("end"), sc === "end");
+
+  // ---------- TITRE ----------
+  if (sc === "title") {
+    setT("t-stripes", `translate(${-(t * 120) % 180} 0)`);
+    const pop = (t0) => { const k = clamp((t - t0) / .35); return k <= 0 ? 0.001 : lerp(3, 1, E.back(k)); };
+    setT("t-main", `translate(640 300) scale(${pop(.3)}) rotate(${-4 + Math.sin(t * 3) * 1.5})`);
+    setT("t-sub", `translate(640 450) scale(${pop(.8)}) rotate(${3 - Math.sin(t * 3) * 1.5})`);
+    const k = clamp((t - 1.5) / .4);
+    setT("t-tag", `translate(${lerp(1600, 640, E.out(k))} 560)`);
+  }
+
+  // ---------- MONDE ----------
+  if (sc === "world") {
+    const cam = camera(t);
+    setT("cam", `translate(${640 + cam.sx} ${360 + cam.sy}) scale(${cam.z}) translate(${-cam.x} ${-cam.y})`);
+    setT("cloudsW", `translate(${(t * 12) % 400} 0)`);
+
+    // camion
+    const tr = truckState(t);
+    setT("truckPos", `translate(${tr.x} ${tr.y}) rotate(${tr.rot}) scale(${tr.dir * TS} ${TS})`);
+    const tw = (tr.x / (45 * TS)) * 180 / Math.PI * Math.sign(tr.dir || 1);
+    const spin = inRange(t, 24.3, 25.0) || inRange(t, 27, 27.3) ? t * 2400 : 0;
+    for (const id of ["tw1", "tw2", "tw3"]) setT(id, `rotate(${tw + spin})`);
+    g("tr-light").setAttribute("fill", tr.engine ? "#fff3a0" : "#c9a92a");
+    g("tr-beam").setAttribute("opacity", tr.engine ? (.22 + (inRange(t, 7.2, 7.6) ? .5 * Math.abs(Math.sin(t * 30)) : 0)).toFixed(2) : 0);
+    // fumée
+    const heavy = (u) => inRange(u, 7.2, 8.6) || inRange(u, 24.3, 25) || inRange(u, 27, 29.1);
+    for (let i = 0; i < puffEls.length; i++) {
+      const life = 1.1, rate = .06, te = Math.floor(t / rate) * rate - i * rate, a = t - te;
+      const p = puffEls[i];
+      if (!tr.engine || te < 7.2 || a > life || (!heavy(te) && i % 3)) { p.setAttribute("r", 0); continue; }
+      const stack = i % 2 ? -25 : 1, hv = heavy(te);
+      p.setAttribute("cx", (stack - a * (hv ? 140 : 60)).toFixed(1));
+      p.setAttribute("cy", (-345 - a * (hv ? 150 : 90)).toFixed(1));
+      p.setAttribute("r", ((hv ? 12 : 7) + a * (hv ? 44 : 22)).toFixed(1));
+      p.setAttribute("fill", hv ? "#4a4c58" : "#cfd3de");
+      p.setAttribute("opacity", ((1 - a / life) * .9).toFixed(2));
+    }
+    const fl = inRange(t, 24.35, 25) || inRange(t, 27, 29.05);
+    show(g("tr-flames"), fl);
+    if (fl) { const f = 1 + Math.sin(t * 60) * .25; setT("fl1", `translate(-25 -335) scale(1 ${f}) translate(25 335)`); setT("fl2", `translate(1 -335) scale(1 ${2 - f}) translate(-1 335)`); }
+
+    // héros à pied / dans le camion / sur le toit
+    const heroSeat = t >= 6.8 && t < 33.5;
+    show(g("heroWorld"), (t >= 3.2 && t < 6.8) || t >= 33.5);
+    if (t < 6.8) {
+      let x, y = GROUND, s = PS, ph = t * 2 * Math.PI * 1.9;
+      if (t < 6.0) { x = lerp(-80, 820, (t - 3.2) / 2.8); y -= Math.abs(Math.sin(ph)) * 8; }
+      else { const k = (t - 6.0) / .8; x = lerp(820, 994, k); y = lerp(GROUND, 474, k) - Math.sin(k * Math.PI) * 170; }
+      const walking = t < 6.0, sw = walking ? Math.sin(ph) * 24 : -20;
+      setT("heroWorld", `translate(${x - 300 * s} ${y - 625 * s}) scale(${s})`);
+      setT("hw-lL", `rotate(${walking ? sw : 25} 272 478)`); setT("hw-lR", `rotate(${walking ? -sw : -15} 328 478)`);
+      setT("hw-aL", `rotate(${walking ? -sw : 150} 211 318)`); setT("hw-aR", `rotate(${walking ? sw : -150} 389 318)`);
+      setT("hw-h", "");
+      setMood(g("heroWorld"), t < 6.0 ? "smile" : "grin");
+    } else if (t >= 33.5) {
+      const s = PS, x = 806, y = 288 - Math.abs(Math.sin((t - 33.5) * 5)) * 26;
+      setT("heroWorld", `translate(${x - 300 * s} ${y - 625 * s}) scale(${s})`);
+      const pump = Math.sin((t - 33.5) * 10) * 20;
+      setT("hw-aL", `rotate(${160 + pump} 211 318)`); setT("hw-aR", `rotate(${-160 + pump} 389 318)`);
+      setT("hw-lL", "rotate(8 272 478)"); setT("hw-lR", "rotate(-8 328 478)");
+      setT("hw-h", `rotate(${Math.sin(t * 5) * 5} 300 300)`);
+      setMood(g("heroWorld"), "victory");
+    }
+    // buste du héros au volant
+    const seat = g("tr-seat");
+    if (heroSeat && !seat.firstChild) seat.innerHTML = heroBust("hs");
+    if (!heroSeat && seat.firstChild) seat.innerHTML = "";
+    if (heroSeat) {
+      let mood = "smile";
+      if (inRange(t, 7.2, 10) || inRange(t, 29, 30.5)) mood = "shout";
+      if (inRange(t, 22.6, 23.4) || inRange(t, 24, 29)) mood = "angry";
+      if (t >= 30.5) mood = "grin";
+      setMood(g("hs"), mood);
+      const honk = inRange(t, 28.8, 29.6);
+      setT("hs-aR", honk ? "rotate(-40 380 316)" : `rotate(${Math.sin(t * 9) * 6} 380 316)`);
+      setT("hs-aL", `rotate(${-Math.sin(t * 9) * 6} 220 316)`);
+      setT("hs-h", `rotate(${inRange(t, 22.6, 23.2) ? Math.sin(t * 50) * 10 : Math.sin(t * 4) * 2} 300 300)`);
+      setT("tr-seat", `translate(70 ${-200 - (inRange(t, 6.8, 7.1) ? Math.sin((t - 6.8) / .3 * Math.PI) * 30 : 0)}) scale(.44) translate(-300 -400)`);
+    }
+
+    // voiture
+    const ca = carState(t);
+    show(g("carPos"), ca.vis && t >= 13.2);
+    setT("carPos", `translate(${ca.x} ${ca.y}) rotate(${ca.rot} ${ca.pivot * ca.dir * CS} 0) scale(${ca.dir * CS} ${CS})`);
+    const cw = (ca.x / (26 * CS)) * 180 / Math.PI * ca.dir + (inRange(t, 15.8, 17) ? t * 2000 : 0);
+    setT("cw1", `rotate(${cw})`); setT("cw2", `rotate(${cw})`);
+
+    // ennemi à pied puis dans la voiture
+    show(g("enemyWorld"), t >= 13.2 && t < 15.6);
+    if (t >= 13.2 && t < 15.6) {
+      const s = PS; let x = 1400, y = GROUND;
+      if (t >= 15.0) { const k = (t - 15) / .6; x = lerp(1400, 1626, k); y = lerp(GROUND, 560, k) - Math.sin(k * Math.PI) * 190; }
+      setT("enemyWorld", `translate(${x - 300 * s} ${y - 625 * s}) scale(${s})`);
+      const wave = Math.sin(t * 14) * 18;
+      setT("ew-aR", t < 15 ? `rotate(${-150 + wave} 389 318)` : "rotate(-160 389 318)");
+      setT("ew-aL", t < 15 ? "rotate(30 211 318)" : "rotate(160 211 318)");
+      setT("ew-lL", t < 15 ? `rotate(${Math.max(0, Math.sin(t * 7)) * 12} 272 478)` : "rotate(20 272 478)");
+      setT("ew-lR", t < 15 ? "rotate(-4 328 478)" : "rotate(-20 328 478)");
+      setMood(g("enemyWorld"), t < 14.1 ? "smile" : "laugh");
+    }
+    show(g("bubbleW"), inRange(t, 13.8, 15.1));
+    const cseat = g("car-seat");
+    const enemySeat = t >= 15.6 && t < 31.0;
+    if (enemySeat && !cseat.firstChild) cseat.innerHTML = enemyBust("es");
+    if (!enemySeat && cseat.firstChild) cseat.innerHTML = "";
+    if (enemySeat) {
+      let mood = "laugh";
+      if (inRange(t, 17, 20)) mood = "smile";
+      if (inRange(t, 22.6, 29.0)) mood = "angry";
+      if (t >= 29.0) mood = "shock";
+      setMood(g("es"), mood);
+      setT("es-h", `rotate(${Math.sin(t * (t > 29.2 ? 30 : 5)) * (t > 29.2 ? 12 : 3)} 300 300)`);
+      setT("es-aR", t > 29.2 ? `rotate(-150 380 316)` : `rotate(${Math.sin(t * 8) * 6} 380 316)`);
+      setT("es-aL", t > 29.2 ? `rotate(150 220 316)` : `rotate(${-Math.sin(t * 8) * 6} 220 316)`);
+    }
+
+    // poussière derrière les véhicules en mouvement
+    const moving = [];
+    if (inRange(t, 18.2, 20) || inRange(t, 22.6, 23.3) || inRange(t, 27, 29.1)) moving.push([tr.x - tr.dir * 230, 1]);
+    if (inRange(t, 15.8, 17) || inRange(t, 18.2, 20) || inRange(t, 22, 22.6) || inRange(t, 27, 29.1)) moving.push([ca.x - ca.dir * 120, .6]);
+    for (let i = 0; i < dustEls.length; i++) {
+      const d = dustEls[i], src = moving[i % 2];
+      if (!src) { d.setAttribute("r", 0); continue; }
+      const a = ((t * 3 + i * .137) % 1);
+      d.setAttribute("cx", (src[0] - Math.sign(i % 2 ? ca.dir : tr.dir) * a * 90 + (i % 5) * 6).toFixed(1));
+      d.setAttribute("cy", (GROUND - 8 - a * 50 - (i % 3) * 6).toFixed(1));
+      d.setAttribute("r", ((6 + a * 24) * src[1]).toFixed(1));
+      d.setAttribute("opacity", (1 - a).toFixed(2));
+    }
+    // étincelles du choc
+    for (let i = 0; i < sparkEls.length; i++) {
+      const a = t - 22.6, p = sparkEls[i];
+      if (a < 0 || a > .7) { p.setAttribute("d", ""); continue; }
+      const { vx, vy } = sparkData[i], x = 625 + vx * a, y = 500 + vy * a + 900 * a * a;
+      p.setAttribute("d", `M${x.toFixed(1)} ${y.toFixed(1)} l${(-vx * .04).toFixed(1)} ${(-(vy + 1800 * a) * .04).toFixed(1)}`);
+      p.setAttribute("opacity", (1 - a / .7).toFixed(2));
+    }
+    // ondes du klaxon
+    for (let i = 0; i < shockEls.length; i++) {
+      const a = t - 29.0 - i * .12, e = shockEls[i];
+      if (a < 0 || a > .7) { e.setAttribute("rx", 0); e.setAttribute("ry", 0); continue; }
+      e.setAttribute("cx", 600 - a * 260); e.setAttribute("cy", 470);
+      e.setAttribute("rx", 30 + a * 420); e.setAttribute("ry", 50 + a * 480);
+      e.setAttribute("opacity", (1 - a / .7).toFixed(2));
+    }
+    // plouf
+    const sa = t - 31.0;
+    for (let i = 0; i < dropEls.length; i++) {
+      const p = dropEls[i];
+      if (sa < 0 || sa > 1.2) { p.setAttribute("r", 0); continue; }
+      const { vx, vy, r } = dropData[i];
+      p.setAttribute("cx", (-420 + vx * sa).toFixed(1)); p.setAttribute("cy", (705 + vy * sa + 1300 * sa * sa).toFixed(1)); p.setAttribute("r", r.toFixed(1));
+    }
+    if (sa >= 0 && sa < .8) {
+      const h = Math.sin(sa / .8 * Math.PI) * 250, w = 1 + sa * .8, P = [];
+      const spikes = [[-110, .35], [-80, .8], [-55, .5], [-30, 1.05], [-5, .6], [20, .95], [45, .55], [70, .75], [100, .3]];
+      P.push(`M${-420 - 130 * w} 708`);
+      spikes.forEach(([dx, k], i) => { const x = -420 + dx * w, nx = -420 + (spikes[i + 1] ? spikes[i + 1][0] : 130) * w; P.push(`Q${(x - 8).toFixed(0)} ${(708 - h * k * .5).toFixed(0)} ${x.toFixed(0)} ${(708 - h * k).toFixed(0)} Q${((x + nx) / 2).toFixed(0)} ${(708 - h * k * .35).toFixed(0)} ${nx.toFixed(0)} ${(708 - h * .15).toFixed(0)}`); });
+      P.push(`L${-420 + 130 * w} 708 Z`); splashCol.setAttribute("d", P.join(" "));
+    }
+    else splashCol.setAttribute("d", "");
+    // ennemi dans l'eau + voiture coulée
+    const inWater = t >= 31.3;
+    show(g("floatEnemy"), inWater); show(g("sunkCar"), inWater);
+    if (inWater) {
+      const bob = Math.sin(t * 3) * 8, rise = clamp((t - 31.3) / .5);
+      setT("floatEnemy", `translate(-330 ${lerp(820, 700, E.back(rise)) + bob}) scale(.5)`);
+      setMood(g("feb"), t < 34 ? "dizzy" : "angry");
+      setT("feb-h", `rotate(${Math.sin(t * 6) * 8} 300 300)`);
+      setT("sunkCar", `translate(-520 ${735 + Math.sin(t * 2.5) * 4})`);
+    }
+    for (let i = 0; i < bubEls.length; i++) {
+      const b = bubEls[i], a = ((t - 31.3) * .9 + i / bubEls.length) % 1;
+      if (t < 31.3) { b.setAttribute("r", 0); continue; }
+      b.setAttribute("cx", -540 + (i % 4) * 22 + Math.sin(t * 4 + i) * 6); b.setAttribute("cy", 760 - a * 70); b.setAttribute("r", 4 + (i % 3) * 3);
+      b.setAttribute("opacity", (1 - a).toFixed(2));
+    }
+  }
+
+  // ---------- VS ----------
+  if (sc === "vs") {
+    const k = clamp((t - 10) / .45), k2 = clamp((t - 10.1) / .45);
+    setT("vsL", `translate(${lerp(-800, 0, E.out(k))} 0)`);
+    setT("vsR", `translate(${lerp(800, 0, E.out(k2))} 0)`);
+    setMood(g("vsh"), t < 11.4 ? "smile" : "angry");
+    setMood(g("vse"), t < 11.4 ? "smile" : "laugh");
+    g("vsL-lines").setAttribute("transform", `translate(300 380) rotate(${t * 20})`);
+    g("vsR-lines").setAttribute("transform", `translate(980 380) rotate(${-t * 20})`);
+    const kv = clamp((t - 10.6) / .3), sh = inRange(t, 10.6, 11.1) ? Math.sin(t * 80) * 10 * (1 - (t - 10.6) / .5) : 0;
+    setT("vsText", `translate(${650 + sh} ${420 + sh}) scale(${kv <= 0 ? .001 : lerp(4, 1, E.back(kv))}) translate(-650 -420)`);
+    show(g("bolt"), t > 10.55 && (Math.floor(t * 14) % 5 !== 0));
+  }
+
+  // ---------- GROS PLANS ----------
+  if (sc === "cuEnemy" || sc === "cuHero") {
+    const hero = sc === "cuHero", t0 = hero ? 23.2 : 21.0, a = t - t0;
+    g("cu-bg").setAttribute("fill", hero ? "#e8413b" : "#8b5cf6");
+    setT("cu-lines", `translate(640 380) rotate(${t * (hero ? -40 : 40)})`);
+    show(g("cu-hero"), hero); show(g("cu-enemy"), !hero);
+    setMood(g(hero ? "cuh" : "cue"), hero ? "angry" : "laugh");
+    const zoom = lerp(1.5, 1.8, a / .8), sh = hero ? Math.sin(t * 60) * 3 : Math.sin(t * 25) * 6;
+    setT("cu-char", `translate(${640 + sh} ${745 - (hero ? 0 : Math.abs(Math.sin(t * 18)) * 14)}) scale(${zoom}) translate(-300 -400)`);
+    const tx = g("cu-text"); tx.textContent = hero ? "Tu vas voir..." : "HAHA ! Trop facile !";
+    tx.setAttribute("fill", hero ? "#ffd93b" : "#fff");
+    setT("cu-text", `translate(640 120) scale(${lerp(.6, 1, E.back(clamp(a / .25)))}) translate(-640 -120)`);
+  }
+
+  // ---------- ÉCRAN PARTAGÉ ----------
+  if (sc === "split") {
+    const a = t - 25;
+    const slide = (d, from) => `translate(0 ${lerp(from, 0, E.out(clamp((a - d) / .3)))})`;
+    setT("spA", slide(0, -720)); setT("spB", slide(.35, 720)); setT("spC", slide(.7, -720));
+    setT("spW", `rotate(${t * 1500})`);
+    setT("spA-lines", `translate(230 380) rotate(${t * 60})`);
+    setT("spA-smoke", `translate(${Math.sin(t * 20) * 8} ${-((a * 60) % 40)})`);
+    setMood(g("sph"), "angry"); setMood(g("spe"), "shock");
+    setT("sph-h", `rotate(${Math.sin(t * 40) * 3} 300 300)`);
+    setT("spe-h", `rotate(${Math.sin(t * 30) * 6} 300 300)`);
+  }
+
+  // ---------- FIN ----------
+  if (sc === "end") {
+    const a = t - 40;
+    setT("e-fin", `translate(640 330) scale(${a < 0 ? .001 : lerp(3, 1, E.bounce(clamp(a / .6)))})`);
+    setT("e-sub", `translate(640 520) scale(${lerp(.001, 1, E.back(clamp((a - 1) / .3)))})`);
+    setT("e-car", `translate(${lerp(1450, -200, clamp((a - 1.8) / 2))} ${680 - Math.abs(Math.sin(a * 12)) * 6}) scale(.5)`);
+  }
+
+  // ---------- SURCOUCHES ----------
+  const speedOn = inRange(t, 18.4, 20) || inRange(t, 27.1, 29) || inRange(t, 29.3, 31);
+  show(g("speedLines"), speedOn);
+  if (speedOn) for (let i = 0; i < speedN; i++) {
+    const d = speedData[i], x = 1400 - ((t * d.sp + d.off) % 3000);
+    speedEls[i].setAttribute("x", x.toFixed(0)); speedEls[i].setAttribute("y", d.y.toFixed(0)); speedEls[i].setAttribute("width", d.len.toFixed(0));
+  }
+  for (const tx of TEXTS) {
+    const on = inRange(t, tx.t0, tx.t1); show(tx.g, on);
+    if (!on) continue;
+    const a = t - tx.t0, b = tx.t1 - t;
+    const s = a < .2 ? lerp(2.2, 1, E.back(a / .2)) : 1 + Math.sin(a * 9) * .03;
+    const op = clamp(b / .12);
+    tx.g.setAttribute("transform", `translate(${tx.x} ${tx.y}) rotate(${tx.rot + Math.sin(a * 7) * 1.5}) scale(${s})`);
+    tx.g.setAttribute("opacity", op.toFixed(2));
+  }
+  // confettis
+  const conf = inRange(t, 33.6, 40);
+  show(g("confetti"), conf);
+  if (conf) for (let i = 0; i < confEls.length; i++) {
+    const d = confData[i], a = t - 33.6 - d.d;
+    if (a < 0) { confEls[i].setAttribute("y", -50); continue; }
+    const y = ((a * d.sp) % 800) - 40, x = d.x + Math.sin(a * 3 + i) * d.sw;
+    confEls[i].setAttribute("x", x.toFixed(1)); confEls[i].setAttribute("y", y.toFixed(1));
+    confEls[i].setAttribute("transform", `rotate(${(a * d.rs) % 360} ${x.toFixed(1)} ${y.toFixed(1)})`);
+  }
+  // médaillon de l'ennemi furieux
+  const ins = inRange(t, 35.6, 40);
+  show(g("inset"), ins);
+  if (ins) {
+    const k = E.back(clamp((t - 35.6) / .35));
+    setT("inset", `translate(1105 545) scale(${Math.max(.001, k)}) translate(-1105 -545)`);
+    setMood(g("ine"), "angry");
+    setT("in-fist", `translate(0 ${Math.sin(t * 22) * 14})`);
+    setT("in-enemy", `translate(1105 ${640 + Math.sin(t * 3) * 5}) scale(.55) translate(-300 -400)`);
+  }
+  // bandes cinéma pendant le combat
+  const lb = t >= 18.2 && t < 33.5 && sc === "world" ? 1 : 0;
+  const lbk = lb ? clamp((t - 18.2) / .3) : 0;
+  g("lbTop").setAttribute("y", -60 + 60 * lbk); g("lbBot").setAttribute("y", 720 - 60 * lbk);
+  // flashs
+  let f = 0; for (const [t0, d] of FLASHES) if (inRange(t, t0, t0 + d)) f = Math.max(f, 1 - (t - t0) / d);
+  g("flash").setAttribute("opacity", f.toFixed(2));
+  g("vignette").setAttribute("opacity", (inRange(t, 20, 20.9) || inRange(t, 29.3, 30.4) ? .8 : .35));
+}
+
+// =====================================================================
+//  SON (WebAudio, synthétisé — le même code sert à l'export vidéo)
+// =====================================================================
+function buildAudio(ctx, dest, start = 0) {
+  const T = x => start + x;
+  const master = ctx.createGain(); master.gain.value = .55; master.connect(dest);
+  const comp = ctx.createDynamicsCompressor(); comp.connect(master);
+  const out = comp;
+  const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), nd = nb.getChannelData(0);
+  let s = 1; for (let i = 0; i < nd.length; i++) { s = (s * 16807) % 2147483647; nd[i] = s / 1073741823.5 - 1; }
+  function env(g, t, a, d, v) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+  function tone(t, f, dur, type = "sine", v = .3, f2, a = .01) {
+    const o = ctx.createOscillator(), gg = ctx.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f, T(t)); if (f2) o.frequency.exponentialRampToValueAtTime(f2, T(t + dur));
+    env(gg, T(t), a, dur, v); o.connect(gg).connect(out); o.start(T(t)); o.stop(T(t + dur + a + .05));
+  }
+  function noise(t, dur, v = .3, fq = 1000, type = "lowpass", fq2, a = .005) {
+    const src = ctx.createBufferSource(); src.buffer = nb; src.loop = true;
+    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(fq, T(t)); if (fq2) fl.frequency.exponentialRampToValueAtTime(fq2, T(t + dur));
+    const gg = ctx.createGain(); env(gg, T(t), a, dur, v); src.connect(fl).connect(gg).connect(out); src.start(T(t)); src.stop(T(t + dur + a + .05));
+  }
+  function engine(t0, t1, f0, f1, v = .12, type = "sawtooth") { // moteur : dents de scie + filtre
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), fl = ctx.createBiquadFilter(), gg = ctx.createGain();
+    o.type = type; o2.type = "square";
+    o.frequency.setValueAtTime(f0, T(t0)); o.frequency.linearRampToValueAtTime(f1, T(t1));
+    o2.frequency.setValueAtTime(f0 * .501, T(t0)); o2.frequency.linearRampToValueAtTime(f1 * .501, T(t1));
+    fl.type = "lowpass"; fl.frequency.value = 700;
+    gg.gain.setValueAtTime(0.0001, T(t0)); gg.gain.linearRampToValueAtTime(v, T(t0 + .08)); gg.gain.setValueAtTime(v, T(t1 - .1)); gg.gain.linearRampToValueAtTime(0.0001, T(t1));
+    o.connect(fl); o2.connect(fl); fl.connect(gg).connect(out); o.start(T(t0)); o2.start(T(t0)); o.stop(T(t1 + .05)); o2.stop(T(t1 + .05));
+  }
+  const boom = t => { tone(t, 140, .5, "sine", .9, 35); noise(t, .25, .35, 900, "lowpass", 100); };
+  const whoosh = (t, d = .5) => noise(t, d, .35, 300, "bandpass", 3000, d * .4);
+  const crash = t => { noise(t, .6, .9, 5000, "lowpass", 300); tone(t, 90, .4, "square", .4, 40); noise(t + .05, .4, .4, 3000, "highpass"); };
+  const honk = (t, d = .9) => { for (const f of [311, 370, 466]) tone(t, f, d, "square", .16, null, .02); };
+  const beep = (t, f) => tone(t, f, .18, "square", .22);
+
+  // titre
+  boom(.3); boom(.8); whoosh(1.45, .35);
+  // pas + saut
+  for (let t = 3.4; t < 6; t += .263) tone(t, 160, .05, "triangle", .2, 90);
+  tone(6.0, 220, .45, "sine", .4, 900); boom(6.8);
+  // démarrage du camion
+  noise(7.05, .15, .4, 2000); engine(7.2, 8.6, 45, 120, .22); engine(8.6, 10, 60, 55, .1);
+  // VS
+  whoosh(10, .4); boom(10.6); noise(10.6, .4, .5, 6000, "highpass", 2000);
+  // ennemi
+  for (let i = 0; i < 6; i++) tone(13.9 + i * .16, i % 2 ? 660 : 880, .1, "square", .12);
+  tone(15.0, 300, .45, "sine", .35, 1200); boom(15.6);
+  engine(15.8, 17, 110, 260, .12, "square");
+  // compte à rebours
+  beep(16.95, 520); beep(17.28, 520); beep(17.61, 520); tone(17.94, 1040, .5, "square", .25);
+  // musique de poursuite (basse)
+  const bass = [55, 55, 65.4, 55, 73.4, 55, 65.4, 49];
+  for (let i = 0, t = 18.2; t < 29; i++, t += .19) { if (inRange(t, 21, 21.8) || inRange(t, 23.2, 24)) continue; tone(t, bass[i % 8], .16, "square", .09); if (i % 2 === 0) noise(t, .04, .18, 8000, "highpass"); }
+  engine(18.2, 20, 50, 110, .16); engine(18.2, 20, 120, 300, .07, "square");
+  whoosh(20, .9);
+  for (let i = 0; i < 8; i++) tone(21.05 + i * .09, 500 + (i % 2) * 180, .07, "square", .14);
+  crash(22.6);
+  engine(23.2, 24, 38, 42, .18); // grrr
+  noise(24.35, .7, .35, 400, "bandpass", 4000); engine(24.35, 25, 60, 180, .18);
+  for (let t = 25; t < 27; t += .35) whoosh(t, .25);
+  engine(27, 29, 60, 140, .18); engine(27, 29, 140, 320, .07, "square");
+  honk(29.0, .95); boom(29.0);
+  whoosh(29.3, 1.4); tone(29.4, 900, 1.5, "sine", .15, 200);
+  noise(31.0, .9, .7, 1800, "lowpass", 200); boom(31.0);
+  for (let i = 0; i < 10; i++) tone(31.4 + i * .2, 500 + (i * 137) % 400, .08, "sine", .18, 900);
+  // victoire
+  const fan = [[33.6, 523], [33.8, 659], [34.0, 784], [34.25, 1047]];
+  for (const [t, f] of fan) { tone(t, f, .25, "square", .16); tone(t, f / 2, .25, "triangle", .2); }
+  for (const f of [523, 659, 784, 1047]) tone(34.5, f, 1.2, "square", .08);
+  tone(34.5, 131, 1.2, "triangle", .3);
+  for (let i = 0, t = 35.8; t < 39.8; i++, t += .25) { tone(t, [523, 659, 784, 659][i % 4], .12, "triangle", .12); if (i % 2 === 0) tone(t, 65.4, .2, "triangle", .25); }
+  for (let i = 0; i < 5; i++) tone(36 + i * .11, 380 - i * 20, .09, "square", .08);
+  // fin
+  boom(40.0); tone(41.0, 660, .15, "square", .15); tone(41.15, 880, .3, "square", .15);
+  engine(41.8, 43.8, 200, 240, .05, "square");
+}
+
+// =====================================================================
+//  LECTURE
+// =====================================================================
+window.renderAt = renderAt; window.DUR = DUR; window.buildAudio = buildAudio;
+const params = new URLSearchParams(location.search);
+let t0 = null, actx = null, playing = false;
+function loop(now) {
+  if (!playing) return;
+  const t = actx ? actx.currentTime - t0 : (now / 1000 - t0);
+  renderAt(Math.min(t, DUR));
+  $("bar").style.width = (Math.min(1, t / DUR) * 100) + "%";
+  if (t >= DUR) { playing = false; $("play").textContent = "↻ Revoir le film"; $("ui").classList.remove("hidden"); return; }
+  requestAnimationFrame(loop);
+}
+$("play").onclick = () => {
+  $("ui").classList.add("hidden");
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); t0 = actx.currentTime + .05; buildAudio(actx, actx.destination, t0); }
+  catch (e) { actx = null; t0 = performance.now() / 1000; }
+  playing = true; requestAnimationFrame(loop);
+};
+renderAt(params.has("t") ? +params.get("t") : 1.2);
+if (params.has("capture")) $("ui").classList.add("hidden");
+</script>
+</body>
+</html>
