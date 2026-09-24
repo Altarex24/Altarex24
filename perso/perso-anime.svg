@@ -1,0 +1,294 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 720" width="600" height="720">
+<title>Perso qui s'envole</title>
+<style>
+  * { transform-box: view-box; }
+  .o { stroke: #1f2330; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+  .anim { animation-duration: 8s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+
+  /* corps entier : danse, élan, envol, atterrissage */
+  #perso { animation-name: perso; transform-origin: 300px 625px; }
+  @keyframes perso {
+    0%   { transform: translate(0, 0) rotate(0) scale(1, 1); }
+    4%   { transform: translate(-6px, -10px) rotate(-5deg); }
+    8%   { transform: translate(0, 0) rotate(0); }
+    12%  { transform: translate(6px, -10px) rotate(5deg); }
+    16%  { transform: translate(0, 0) rotate(0); }
+    20%  { transform: translate(-6px, -10px) rotate(-5deg); }
+    24%  { transform: translate(0, 0) rotate(0); }
+    28%  { transform: translate(6px, -10px) rotate(5deg); }
+    32%  { transform: translate(0, 0) rotate(0) scale(1, 1); }
+    38%  { transform: translate(0, 0) scale(1.08, 0.88); }
+    44%  { transform: translate(0, -80px) rotate(-4deg) scale(0.96, 1.06); }
+    50%  { transform: translate(-10px, -108px) rotate(4deg) scale(1, 1); }
+    56%  { transform: translate(10px, -98px) rotate(-4deg); }
+    61%  { transform: translate(0, -60px) rotate(0) scale(0.97, 1.04); }
+    64%  { transform: translate(0, 0) scale(1.12, 0.84); }
+    68%  { transform: translate(0, -14px) scale(0.97, 1.03); }
+    71%  { transform: translate(0, 0) scale(1, 1); }
+    100% { transform: translate(0, 0) scale(1, 1); }
+  }
+  #ombre { animation-name: ombre; transform-origin: 300px 632px; }
+  @keyframes ombre {
+    0%, 32% { transform: scale(1); opacity: .35; }
+    38% { transform: scale(1.1); }
+    50%, 56% { transform: scale(0.5); opacity: .15; }
+    64% { transform: scale(1.15); opacity: .35; }
+    71%, 100% { transform: scale(1); }
+  }
+
+  /* bras */
+  #brasG { animation-name: brasG; transform-origin: 211px 318px; }
+  @keyframes brasG {
+    0%   { transform: rotate(0); }
+    4%   { transform: rotate(140deg); }
+    8%   { transform: rotate(10deg); }
+    12%  { transform: rotate(25deg); }
+    20%  { transform: rotate(140deg); }
+    24%  { transform: rotate(10deg); }
+    32%  { transform: rotate(0); }
+    38%  { transform: rotate(-10deg); }
+    42%  { transform: rotate(80deg); }
+    45%  { transform: rotate(45deg); }
+    48%  { transform: rotate(85deg); }
+    51%  { transform: rotate(45deg); }
+    54%  { transform: rotate(85deg); }
+    57%  { transform: rotate(45deg); }
+    61%  { transform: rotate(100deg); }
+    66%  { transform: rotate(30deg); }
+    71%, 100% { transform: rotate(0); }
+  }
+  #brasD { animation-name: brasD; transform-origin: 389px 318px; }
+  @keyframes brasD {
+    0%   { transform: rotate(0); }
+    4%   { transform: rotate(-10deg); }
+    8%   { transform: rotate(-25deg); }
+    12%  { transform: rotate(-140deg); }
+    16%  { transform: rotate(-10deg); }
+    24%  { transform: rotate(-25deg); }
+    28%  { transform: rotate(-140deg); }
+    32%  { transform: rotate(0); }
+    38%  { transform: rotate(10deg); }
+    42%  { transform: rotate(-80deg); }
+    45%  { transform: rotate(-45deg); }
+    48%  { transform: rotate(-85deg); }
+    51%  { transform: rotate(-45deg); }
+    54%  { transform: rotate(-85deg); }
+    57%  { transform: rotate(-45deg); }
+    61%  { transform: rotate(-100deg); }
+    66%  { transform: rotate(-30deg); }
+    71%  { transform: rotate(0); }
+    76%, 92% { transform: rotate(-95deg); }
+    97%, 100% { transform: rotate(0); }
+  }
+  /* pouce levé qui apparaît avec le geste */
+  #pouce { animation-name: pouce; }
+  @keyframes pouce { 0%, 74% { opacity: 0; } 77%, 91% { opacity: 1; } 94%, 100% { opacity: 0; } }
+
+  /* jambes pendant la danse */
+  #jambeG { animation-name: jambeG; transform-origin: 272px 478px; }
+  @keyframes jambeG {
+    0%, 32% { transform: rotate(0); }
+    4%, 20% { transform: rotate(8deg); }
+    8%, 24% { transform: rotate(0); }
+    44% { transform: rotate(10deg); }
+    50% { transform: rotate(-6deg); }
+    56% { transform: rotate(8deg); }
+    62%, 100% { transform: rotate(0); }
+  }
+  #jambeD { animation-name: jambeD; transform-origin: 328px 478px; }
+  @keyframes jambeD {
+    0%, 32% { transform: rotate(0); }
+    12%, 28% { transform: rotate(-8deg); }
+    16% { transform: rotate(0); }
+    44% { transform: rotate(-10deg); }
+    50% { transform: rotate(6deg); }
+    56% { transform: rotate(-8deg); }
+    62%, 100% { transform: rotate(0); }
+  }
+
+  /* noeud papillon = hélice */
+  #noeud { animation-name: noeud; transform-origin: 300px 308px; animation-timing-function: linear; }
+  @keyframes noeud {
+    0%, 34% { transform: rotate(0); }
+    36% { transform: rotate(40deg) scale(1.1); }
+    62% { transform: rotate(3600deg) scale(1.25); }
+    66%, 100% { transform: rotate(3600deg) scale(1); }
+  }
+  #flou { animation-name: flou; transform-origin: 300px 308px; }
+  @keyframes flou { 0%, 38% { opacity: 0; transform: scale(.6); } 42%, 58% { opacity: .55; transform: scale(1.25); } 62%, 100% { opacity: 0; transform: scale(.6); } }
+
+  /* tête, couronne, lunettes */
+  #tete { animation-name: tete; transform-origin: 300px 300px; }
+  @keyframes tete {
+    0%, 4%, 12%, 20%, 28%, 32% { transform: rotate(0); }
+    8%, 24% { transform: rotate(6deg); }
+    16% { transform: rotate(-6deg); }
+    74% { transform: rotate(0); }
+    78%, 90% { transform: rotate(-9deg) translate(-4px, 4px); }
+    95%, 100% { transform: rotate(0); }
+  }
+  #couronne { animation-name: couronne; transform-origin: 300px 180px; }
+  @keyframes couronne {
+    0%, 38% { transform: translate(0, 0) rotate(0); }
+    46% { transform: translate(-8px, -26px) rotate(-25deg); }
+    55% { transform: translate(10px, -30px) rotate(20deg); }
+    63% { transform: translate(0, -30px) rotate(-8deg); }
+    67% { transform: translate(0, 4px) rotate(0); }
+    70%, 100% { transform: translate(0, 0) rotate(0); }
+  }
+  #lunettes { animation-name: lunettes; }
+  @keyframes lunettes {
+    0%, 76% { transform: translate(0, 0); }
+    80%, 90% { transform: translate(0, 26px); }
+    94%, 100% { transform: translate(0, 0); }
+  }
+  #etincelle { animation-name: etincelle; transform-origin: 342px 226px; }
+  @keyframes etincelle {
+    0%, 81% { transform: scale(0) rotate(0); opacity: 0; }
+    84% { transform: scale(1.3) rotate(45deg); opacity: 1; }
+    88% { transform: scale(0.9) rotate(90deg); opacity: 1; }
+    91%, 100% { transform: scale(0) rotate(135deg); opacity: 0; }
+  }
+  #bouche { animation-name: bouche; transform-origin: 300px 286px; }
+  @keyframes bouche { 0%, 36% { transform: scale(1); } 40%, 62% { transform: scale(1.25, 1.5); } 66%, 100% { transform: scale(1); } }
+
+  /* effets */
+  #vitesse { animation-name: vitesse; }
+  @keyframes vitesse { 0%, 42% { opacity: 0; transform: translateY(-40px); } 46%, 56% { opacity: 1; transform: translateY(-150px); } 60%, 100% { opacity: 0; transform: translateY(-150px); } }
+  .poussiere { animation-name: poussiere; }
+  #p1 { transform-origin: 240px 628px; } #p2 { transform-origin: 360px 628px; } #p3 { transform-origin: 300px 640px; }
+  @keyframes poussiere {
+    0%, 63% { opacity: 0; transform: scale(.2) translate(0, 0); }
+    66% { opacity: .95; transform: scale(1) translate(0, 0); }
+    76%, 100% { opacity: 0; transform: scale(1.6) translate(0, -10px); }
+  }
+  #txt { animation-name: txt; transform-origin: 460px 150px; }
+  @keyframes txt { 0%, 42% { opacity: 0; transform: scale(.3) rotate(-10deg); } 46%, 58% { opacity: 1; transform: scale(1) rotate(6deg); } 62%, 100% { opacity: 0; transform: scale(.3) rotate(-10deg); } }
+  .nuage { animation: nuage 40s linear infinite; }
+  @keyframes nuage { from { transform: translateX(-260px); } to { transform: translateX(760px); } }
+  @media (prefers-reduced-motion: reduce) { .anim, .nuage { animation-play-state: paused; } }
+</style>
+<defs>
+  <linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ec8ff"/><stop offset="1" stop-color="#dff4ff"/></linearGradient>
+  <linearGradient id="verre" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b2a86"/><stop offset="1" stop-color="#c89af0"/></linearGradient>
+  <linearGradient id="jean" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8db4e2"/><stop offset="1" stop-color="#6d97cc"/></linearGradient>
+</defs>
+
+<!-- décor -->
+<rect width="600" height="720" fill="url(#ciel)"/>
+<circle cx="520" cy="80" r="42" fill="#fff3a6"/><circle cx="520" cy="80" r="30" fill="#ffe45c"/>
+<g class="nuage"><g fill="#fff" opacity=".95"><ellipse cx="80" cy="120" rx="55" ry="22"/><ellipse cx="105" cy="104" rx="32" ry="24"/><ellipse cx="60" cy="108" rx="24" ry="18"/></g></g>
+<g class="nuage" style="animation-delay:-22s"><g fill="#fff" opacity=".85"><ellipse cx="60" cy="210" rx="42" ry="16"/><ellipse cx="80" cy="198" rx="24" ry="18"/></g></g>
+<path d="M0 560 Q150 530 300 548 T600 540 V720 H0Z" fill="#7fd35a"/>
+<path d="M0 600 Q160 585 300 596 T600 590 V720 H0Z" fill="#62bb44"/>
+<g fill="#4fa336"><path d="M60 650 l6 -16 l6 16z"/><path d="M130 690 l5 -14 l5 14z"/><path d="M470 660 l6 -16 l6 16z"/><path d="M540 700 l5 -13 l5 13z"/><path d="M200 700 l5 -12 l5 12z"/><path d="M420 705 l5 -13 l5 13z"/></g>
+
+<ellipse id="ombre" class="anim" cx="300" cy="632" rx="95" ry="14" fill="#1f3a14"/>
+
+<!-- poussière à l'atterrissage -->
+<g fill="#fff" class="o" style="stroke-width:3">
+  <g id="p1" class="anim poussiere"><circle cx="225" cy="624" r="14"/><circle cx="205" cy="630" r="10"/></g>
+  <g id="p2" class="anim poussiere"><circle cx="375" cy="624" r="14"/><circle cx="395" cy="630" r="10"/></g>
+  <g id="p3" class="anim poussiere"><circle cx="300" cy="642" r="9"/></g>
+</g>
+
+<!-- traits de vitesse -->
+<g id="vitesse" class="anim" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0">
+  <path d="M255 660 v50"/><path d="M300 670 v60"/><path d="M345 660 v50"/>
+</g>
+
+<g id="perso" class="anim">
+  <!-- jambes -->
+  <g id="jambeG" class="anim">
+    <rect class="o" x="246" y="470" width="54" height="130" rx="6" fill="#3b3f48"/>
+    <path d="M252 500 l20 12 l-8 20 l24 10" fill="none" stroke="#5a606c" stroke-width="4"/>
+    <path d="M250 548 q12 -10 26 0 q10 8 22 -2" fill="none" stroke="#23262c" stroke-width="4"/>
+    <rect class="o" x="244" y="592" width="58" height="34" rx="7" fill="#c9c04f"/>
+    <path d="M250 604 h44" stroke="#8e8830" stroke-width="4"/>
+  </g>
+  <g id="jambeD" class="anim">
+    <rect class="o" x="300" y="470" width="54" height="130" rx="6" fill="#3b3f48"/>
+    <path d="M318 520 q14 6 24 -6 q-4 16 10 24 q-16 2 -22 14 q-6 -14 -20 -14z" fill="#f2c9b1" stroke="#23262c" stroke-width="3"/>
+    <path d="M306 505 l22 -10 l14 14" fill="none" stroke="#5a606c" stroke-width="4"/>
+    <rect class="o" x="298" y="592" width="58" height="34" rx="7" fill="#c9c04f"/>
+    <path d="M304 604 h44" stroke="#8e8830" stroke-width="4"/>
+  </g>
+
+  <!-- bras gauche (derrière le torse au niveau de l'épaule) -->
+  <g id="brasG" class="anim">
+    <rect class="o" x="186" y="302" width="52" height="150" rx="12" fill="#f6d2bb"/>
+    <path d="M192 318 h40" stroke="#e8b99c" stroke-width="4"/>
+  </g>
+
+  <!-- torse -->
+  <rect class="o" x="236" y="298" width="128" height="182" rx="10" fill="url(#jean)"/>
+  <path d="M300 300 v160" stroke="#5a83b8" stroke-width="3" stroke-dasharray="6 5"/>
+  <path d="M250 340 h36 v14 h-36z M314 340 h36 v14 h-36z" fill="#7aa2d4" stroke="#4f78ad" stroke-width="3"/>
+  <circle cx="292" cy="380" r="3.5" fill="#dfe8f5"/><circle cx="292" cy="410" r="3.5" fill="#dfe8f5"/><circle cx="292" cy="440" r="3.5" fill="#dfe8f5"/>
+  <path d="M244 360 q8 30 0 70 M356 360 q-8 30 0 70" fill="none" stroke="#5a83b8" stroke-width="3"/>
+  <!-- bandoulière -->
+  <path d="M362 302 L240 462" stroke="#1f2330" stroke-width="20" stroke-linecap="round"/>
+  <path d="M362 302 L240 462" stroke="#6f7d31" stroke-width="13" stroke-linecap="round"/>
+  <rect x="286" y="386" width="22" height="16" rx="3" fill="#b9bfc7" stroke="#1f2330" stroke-width="3" transform="rotate(-52 297 394)"/>
+  <!-- ceinture -->
+  <rect class="o" x="236" y="460" width="128" height="18" rx="3" fill="#80858d"/>
+  <rect x="290" y="462" width="20" height="14" rx="2" fill="#d6d9de" stroke="#1f2330" stroke-width="3"/>
+
+  <!-- bras droit -->
+  <g id="brasD" class="anim">
+    <rect class="o" x="362" y="302" width="52" height="150" rx="12" fill="#f6d2bb"/>
+    <path d="M368 318 h40" stroke="#e8b99c" stroke-width="4"/>
+    <!-- pouce levé -->
+    <g id="pouce" class="anim"><rect class="o" x="408" y="415" width="22" height="16" rx="7" fill="#f6d2bb"/></g>
+  </g>
+
+  <!-- noeud papillon + cravate rouge -->
+  <path class="o" d="M292 314 L308 314 L300 342 Z" fill="#d8282d"/>
+  <circle id="flou" class="anim" cx="300" cy="308" r="50" fill="#9be6ff" opacity="0"/>
+  <g id="noeud" class="anim">
+    <path class="o" d="M300 308 L258 286 Q246 308 258 330 Z" fill="#3fc6f5"/>
+    <path class="o" d="M300 308 L342 286 Q354 308 342 330 Z" fill="#3fc6f5"/>
+    <path d="M266 296 q10 12 0 24 M334 296 q-10 12 0 24" fill="none" stroke="#1d9fd4" stroke-width="3"/>
+    <rect class="o" x="289" y="297" width="22" height="22" rx="7" fill="#5ad2fb"/>
+  </g>
+
+  <!-- tête -->
+  <g id="tete" class="anim">
+    <!-- couronne derrière les cheveux -->
+    <g id="couronne" class="anim">
+      <path class="o" d="M258 196 L262 128 L282 160 L300 112 L318 160 L338 128 L342 196 Z" fill="#f5c531"/>
+      <circle cx="300" cy="150" r="7" fill="#e8413b" stroke="#1f2330" stroke-width="3"/>
+      <path d="M268 184 h64" stroke="#d99d16" stroke-width="4"/>
+    </g>
+    <!-- cheveux bruns sur les côtés -->
+    <path class="o" d="M240 212 Q232 260 244 290 L262 290 L258 222 Z" fill="#7a4b2a"/>
+    <path class="o" d="M360 212 Q368 260 356 290 L338 290 L342 222 Z" fill="#7a4b2a"/>
+    <!-- visage -->
+    <rect class="o" x="244" y="196" width="112" height="104" rx="30" fill="#f6d2bb"/>
+    <!-- yeux (visibles quand les lunettes descendent) : clin d'oeil à droite -->
+    <ellipse cx="276" cy="236" rx="5" ry="7" fill="#1f2330"/>
+    <path d="M316 238 Q324 230 332 238" fill="none" stroke="#1f2330" stroke-width="4" stroke-linecap="round"/>
+    <!-- bouche -->
+    <path id="bouche" class="anim" d="M282 280 Q300 294 318 280" fill="none" stroke="#1f2330" stroke-width="4" stroke-linecap="round"/>
+    <!-- cheveux bleus en pointes -->
+    <path class="o" d="M236 226 L244 176 L258 198 L266 152 L284 188 L296 136 L310 184 L326 146 L334 190 L350 160 L352 196 L366 186 L362 228 Q300 206 236 226 Z" fill="#2f86ea"/>
+    <path d="M266 168 L276 196 M296 150 L302 190 M326 160 L324 194" stroke="#76b8ff" stroke-width="5" stroke-linecap="round"/>
+    <!-- lunettes aviateur -->
+    <g id="lunettes" class="anim">
+      <path d="M248 232 L240 228 M352 232 L360 228" stroke="#d8a93a" stroke-width="4" stroke-linecap="round"/>
+      <path d="M252 228 Q274 220 295 228 Q297 250 281 258 Q257 261 252 240 Z" fill="url(#verre)" stroke="#d8a93a" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M348 228 Q326 220 305 228 Q303 250 319 258 Q343 261 348 240 Z" fill="url(#verre)" stroke="#d8a93a" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M295 230 Q300 225 305 230" fill="none" stroke="#d8a93a" stroke-width="4"/>
+      <path d="M260 234 q6 -4 12 -4 M312 234 q6 -4 12 -4" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+    </g>
+    <!-- étincelle du clin d'oeil -->
+    <path id="etincelle" class="anim" d="M342 204 L348 220 L364 226 L348 232 L342 248 L336 232 L320 226 L336 220 Z" fill="#fff6b0" stroke="#f2b92a" stroke-width="2"/>
+  </g>
+</g>
+
+<!-- bulle "WOUHOU !" -->
+<g id="txt" class="anim">
+  <path class="o" d="M392 118 h140 a14 14 0 0 1 14 14 v36 a14 14 0 0 1 -14 14 h-96 l-22 20 l4 -20 h-26 a14 14 0 0 1 -14 -14 v-36 a14 14 0 0 1 14 -14z" fill="#fff"/>
+  <text x="462" y="160" text-anchor="middle" font-family="Comic Sans MS, Chalkboard SE, Arial Rounded MT Bold, sans-serif" font-weight="bold" font-size="26" fill="#2f86ea">WOUHOU !</text>
+</g>
+</svg>
