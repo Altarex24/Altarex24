@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 950" width="1400" height="950">
+  <defs>
+    <!-- Remplissage cire : traits striés + grain de papier -->
+    <filter id="wax" filterUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="9" xChannelSelector="R" yChannelSelector="G" result="wob"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.9 0.035" numOctaves="3" seed="11" result="streak"/>
+      <feColorMatrix in="streak" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3.4 0 0 0 -1.05" result="streakA"/>
+      <feComposite in="wob" in2="streakA" operator="in"/>
+    </filter>
+    <!-- Contour crayon : tremblé + un peu de grain -->
+    <filter id="line" filterUnits="userSpaceOnUse" x="-3000" y="-3000" width="6000" height="6000">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="7" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="6" xChannelSelector="R" yChannelSelector="G" result="wob"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="2" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.6 0 0 0 -0.35" result="gA"/>
+      <feComposite in="wob" in2="gA" operator="in"/>
+    </filter>
+    <!-- Texture du papier -->
+    <filter id="paper" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="1"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.3  0 0 0 0 0.2  0 0 0 0.09 0"/>
+    </filter>
+  </defs>
+
+  <!-- Papier -->
+  <rect width="1400" height="950" fill="#fbf7ec"/>
+  <rect width="1400" height="950" filter="url(#paper)"/>
+
+  <!-- Décor : ciel, soleil, herbe -->
+  <g transform="rotate(-30 700 475)" filter="url(#wax)"><g transform="rotate(30 700 475)">
+    <path d="M0 0 H1400 V150 Q1100 190 700 150 T0 160 Z" fill="#9fd3f7" opacity="0.75"/>
+    <circle cx="1310" cy="95" r="62" fill="#ffd21f"/>
+    <path d="M0 800 Q350 770 700 800 T1400 790 V950 H0 Z" fill="#5fbf3a"/>
+  </g></g>
+  <g filter="url(#line)" stroke-linecap="round" fill="none">
+    <g stroke="#f2a100" stroke-width="7">
+      <path d="M1310 10 V-5 M1220 95 H1195 M1245 30 L1228 13 M1245 160 L1225 180 M1375 160 L1392 178 M1310 180 V200"/>
+    </g>
+    <path d="M1265 90 q10 -8 20 0 M1335 90 q10 -8 20 0 M1275 115 q35 25 70 0" stroke="#8a5a00" stroke-width="5"/>
+    <g stroke="#2f8a1c" stroke-width="5">
+      <path d="M40 815 l8 -25 l6 25 M140 830 l6 -22 l8 22 M600 820 l7 -25 l6 25 M820 815 l7 -24 l6 24 M1250 820 l8 -25 l6 25 M1340 840 l6 -22 l8 22 M480 880 l6 -20 l7 20 M950 890 l7 -22 l6 22"/>
+    </g>
+    <!-- nuages -->
+    <path d="M140 95 q-30 0 -25 -25 q5 -30 40 -22 q15 -30 50 -12 q35 -10 40 25 q25 10 5 34 Z" stroke="#fff" stroke-width="9" fill="#fff"/>
+    <path d="M640 80 q-25 0 -20 -20 q5 -25 35 -18 q12 -25 42 -10 q30 -8 34 20 q20 8 4 28 Z" stroke="#fff" stroke-width="9" fill="#fff"/>
+  </g>
+
+  <!-- ===================== MOI ===================== -->
+  <g transform="translate(340 0)">
+    <!-- remplissages -->
+    <g transform="rotate(-35)" filter="url(#wax)"><g transform="rotate(35)">
+      <!-- jambes / pantalon -->
+      <rect x="-78" y="560" width="72" height="190" fill="#3b3f48"/>
+      <rect x="6" y="560" width="72" height="190" fill="#3b3f48"/>
+      <path d="M-62 620 l20 -8 l10 22 l-22 10 Z M30 660 l24 4 l-4 26 l-22 -6 Z" fill="#8a909c"/>
+      <!-- bottes -->
+      <path d="M-82 735 H-2 V815 H-92 Q-96 770 -82 735 Z" fill="#c9b52e"/>
+      <path d="M2 735 H82 Q96 770 92 815 H2 Z" fill="#c9b52e"/>
+      <rect x="-94" y="805" width="94" height="14" fill="#6d6318"/>
+      <rect x="2" y="805" width="94" height="14" fill="#6d6318"/>
+      <!-- torse jean -->
+      <rect x="-98" y="330" width="196" height="235" rx="8" fill="#5a8fd8"/>
+      <path d="M-98 335 L-30 335 L-40 560 L-98 560 Z M98 335 L30 335 L40 560 L98 560 Z" fill="#3f73c0"/>
+      <!-- ceinture -->
+      <rect x="-98" y="548" width="196" height="18" fill="#2a2a31"/>
+      <rect x="-14" y="545" width="28" height="24" fill="#c9c9c9"/>
+      <!-- bras -->
+      <rect x="-168" y="335" width="66" height="225" rx="12" fill="#f4c9a6"/>
+      <rect x="102" y="335" width="66" height="225" rx="12" fill="#f4c9a6"/>
+      <!-- tête -->
+      <rect x="-82" y="170" width="164" height="165" rx="40" fill="#f4c9a6"/>
+      <!-- cheveux -->
+      <path d="M-92 225 L-110 170 L-72 180 L-78 125 L-40 150 L-25 95 L5 140 L30 90 L45 145 L85 110 L78 165 L118 160 L92 220 Q60 175 0 178 Q-60 178 -92 225 Z" fill="#1d6ff0"/>
+      <!-- couronne -->
+      <path d="M-55 125 L-62 55 L-30 90 L0 40 L30 90 L62 55 L55 125 Z" fill="#ffc933"/>
+      <circle cx="0" cy="95" r="10" fill="#e8322c"/>
+      <!-- lunettes -->
+      <path d="M-70 232 H-12 Q-10 280 -42 282 Q-72 280 -70 232 Z" fill="#8c3fd6"/>
+      <path d="M12 232 H70 Q72 280 42 282 Q10 280 12 232 Z" fill="#8c3fd6"/>
+      <!-- cravate rouge + noeud papillon -->
+      <path d="M-10 350 L10 350 L16 400 L0 420 L-16 400 Z" fill="#d7262a"/>
+      <path d="M-70 318 L-8 345 L-70 380 Q-82 350 -70 318 Z M70 318 L8 345 L70 380 Q82 350 70 318 Z" fill="#23b3ff"/>
+      <rect x="-14" y="330" width="28" height="32" rx="8" fill="#1a9be6"/>
+      <!-- bandoulière -->
+      <path d="M86 330 L102 345 L-86 560 L-102 545 Z" fill="#5c6a26"/>
+    </g></g>
+    <!-- contours -->
+    <g filter="url(#line)" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="-78" y="560" width="72" height="180"/>
+      <rect x="6" y="560" width="72" height="180"/>
+      <path d="M-82 735 H-2 V815 H-92 Q-96 770 -82 735 Z M2 735 H82 Q96 770 92 815 H2 Z"/>
+      <rect x="-98" y="330" width="196" height="235" rx="8"/>
+      <path d="M-30 335 L-40 548 M30 335 L40 548"/>
+      <rect x="-14" y="545" width="28" height="24"/>
+      <rect x="-168" y="335" width="66" height="225" rx="12"/>
+      <rect x="102" y="335" width="66" height="225" rx="12"/>
+      <path d="M-160 525 H-110 M110 525 H160" stroke-width="3"/>
+      <rect x="-82" y="170" width="164" height="165" rx="40"/>
+      <path d="M-92 225 L-110 170 L-72 180 L-78 125 L-40 150 L-25 95 L5 140 L30 90 L45 145 L85 110 L78 165 L118 160 L92 220 Q60 175 0 178 Q-60 178 -92 225 Z" stroke="#0b3a8c"/>
+      <path d="M-55 125 L-62 55 L-30 90 L0 40 L30 90 L62 55 L55 125 Z" stroke="#a26b00"/>
+      <!-- monture dorée -->
+      <path d="M-70 232 H-12 Q-10 280 -42 282 Q-72 280 -70 232 Z M12 232 H70 Q72 280 42 282 Q10 280 12 232 Z M-12 240 Q0 232 12 240 M-70 234 L-84 228 M70 234 L84 228" stroke="#c7961c"/>
+      <!-- reflet -->
+      <path d="M-58 245 L-40 262 M24 245 L42 262" stroke="#fff" stroke-width="4"/>
+      <!-- sourire -->
+      <path d="M-38 300 Q0 330 38 300"/>
+      <path d="M-70 318 L-8 345 L-70 380 Q-82 350 -70 318 Z M70 318 L8 345 L70 380 Q82 350 70 318 Z" stroke="#0d5fa0"/>
+      <path d="M86 330 L102 345 L-86 560 L-102 545 Z" stroke="#2d3510" stroke-width="4"/>
+      <!-- déchirures du pantalon -->
+      <path d="M-62 620 l20 -8 l10 22 l-22 10 Z M30 660 l24 4 l-4 26 l-22 -6 Z" stroke-width="3"/>
+    </g>
+    <text x="0" y="900" text-anchor="middle" font-family="'Comic Sans MS','Chalkboard SE','Patrick Hand',cursive,sans-serif" font-size="56" font-weight="bold" fill="#1d6ff0" filter="url(#line)">MOI !</text>
+  </g>
+
+  <!-- VS -->
+  <g filter="url(#line)">
+    <text x="700" y="500" text-anchor="middle" font-family="'Comic Sans MS','Chalkboard SE',cursive,sans-serif" font-size="120" font-weight="bold" fill="#e8322c" transform="rotate(-8 700 470)">VS</text>
+    <path d="M640 300 l30 60 l-25 5 l40 70 M760 620 l-30 -60 l25 -5 l-40 -70" stroke="#ffb300" stroke-width="7" fill="none" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ===================== ENNEMI ===================== -->
+  <g transform="translate(1060 0)">
+    <g transform="rotate(-35)" filter="url(#wax)"><g transform="rotate(35)">
+      <!-- jambes : leggings clairs, un bandeau cyan -->
+      <path d="M-78 600 H-8 L-2 740 H-72 Z" fill="#dcdce6"/>
+      <path d="M8 600 H78 L66 740 H-2 Z" fill="#dcdce6"/>
+      <rect x="-76" y="690" width="72" height="22" fill="#29abf2"/>
+      <!-- bottes grises -->
+      <path d="M-74 735 H0 V812 H-86 Q-90 770 -74 735 Z" fill="#6f6d7f"/>
+      <path d="M0 735 H70 Q84 770 80 812 H0 Z" fill="#6f6d7f"/>
+      <!-- short cyan -->
+      <path d="M-92 520 H92 L96 620 H6 L0 600 L-6 620 H-96 Z" fill="#35b4f5"/>
+      <!-- épaules grises + débardeur -->
+      <rect x="-100" y="322" width="200" height="30" rx="10" fill="#6f6d7f"/>
+      <path d="M-92 330 Q-60 345 -58 322 H58 Q60 345 92 330 L92 530 H-92 Z" fill="#29abf2"/>
+      <!-- bras qui salue -->
+      <path d="M-98 330 L-178 300 L-200 340 L-110 380 Z" fill="#6f6d7f"/>
+      <path d="M-200 318 L-170 318 L-150 190 L-188 185 Z" fill="#6f6d7f"/>
+      <path d="M-192 190 L-148 195 L-140 150 L-146 110 L-160 110 L-162 145 L-168 100 L-182 100 L-180 145 L-194 108 L-208 115 L-196 160 L-215 150 L-220 165 Z" fill="#6f6d7f"/>
+      <!-- bras sur la hanche -->
+      <path d="M98 330 L180 395 L152 425 L92 380 Z" fill="#6f6d7f"/>
+      <path d="M180 395 L152 425 L98 500 L88 470 Z" fill="#6f6d7f"/>
+      <rect x="70" y="462" width="48" height="50" rx="16" fill="#6f6d7f"/>
+      <!-- tête -->
+      <rect x="-88" y="150" width="176" height="176" rx="38" fill="#6f6d7f"/>
+      <!-- logo Roblox -->
+      <rect x="30" y="378" width="30" height="30" fill="#ffffff" transform="rotate(15 45 393)"/>
+      <rect x="40" y="388" width="10" height="10" fill="#29abf2" transform="rotate(15 45 393)"/>
+    </g></g>
+    <g filter="url(#line)" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M-78 600 H-8 L-2 740 H-72 Z M8 600 H78 L66 740 H-2 Z"/>
+      <path d="M-76 690 H-4 M-76 712 H-4" stroke="#0f6fb0"/>
+      <path d="M-74 735 H0 V812 H-86 Q-90 770 -74 735 Z M0 735 H70 Q84 770 80 812 H0 Z"/>
+      <path d="M-92 520 H92 L96 620 H6 L0 600 L-6 620 H-96 Z" stroke="#0f6fb0"/>
+      <path d="M-92 330 Q-60 345 -58 322 H58 Q60 345 92 330 L92 530 H-92 Z" stroke="#0f6fb0"/>
+      <path d="M-98 330 L-178 300 L-200 340 L-110 380 Z"/>
+      <path d="M-200 318 L-170 318 L-150 190 L-188 185 Z"/>
+      <path d="M-192 190 L-148 195 L-140 150 L-146 110 L-160 110 L-162 145 L-168 100 L-182 100 L-180 145 L-194 108 L-208 115 L-196 160 L-215 150 L-220 165 Z"/>
+      <path d="M98 330 L180 395 L152 425 L92 380 Z M180 395 L152 425 L98 500 L88 470 Z"/>
+      <rect x="70" y="462" width="48" height="50" rx="16"/>
+      <rect x="-88" y="150" width="176" height="176" rx="38"/>
+      <rect x="30" y="378" width="30" height="30" transform="rotate(15 45 393)" stroke-width="3"/>
+      <!-- traits de mouvement du salut -->
+      <path d="M-240 120 q-15 25 0 50 M-262 105 q-22 40 0 80" stroke="#888" stroke-width="4"/>
+    </g>
+    <!-- visage -->
+    <g filter="url(#line)" fill="#1d1d24" stroke="#1d1d24" stroke-width="6" stroke-linecap="round">
+      <ellipse cx="-30" cy="225" rx="8" ry="14"/>
+      <ellipse cx="30" cy="225" rx="8" ry="14"/>
+      <path d="M-42 262 Q0 300 42 262" fill="none"/>
+      <!-- sourcils méchants -->
+      <path d="M-50 195 L-14 208 M50 195 L14 208" fill="none"/>
+    </g>
+    <text x="0" y="900" text-anchor="middle" font-family="'Comic Sans MS','Chalkboard SE','Patrick Hand',cursive,sans-serif" font-size="56" font-weight="bold" fill="#6f6d7f" filter="url(#line)">MON ENNEMI</text>
+  </g>
+</svg>
