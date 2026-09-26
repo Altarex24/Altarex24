@@ -77,14 +77,14 @@ def build():
     return grid
 
 
-def write_png(path, grid, scale=1):
+def write_png(path, grid, scale=1, pal=PAL):
     w = h = N * scale
     raw = bytearray()
     for y in range(h):
         raw.append(0)
         for x in range(w):
             k = grid[y // scale][x // scale]
-            raw.extend(PAL[k] if k else (0, 0, 0, 0))
+            raw.extend(pal[k] if k else (0, 0, 0, 0))
 
     def chunk(tag, data):
         c = tag + data
