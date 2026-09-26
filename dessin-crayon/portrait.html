@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portrait au crayon</title>
+<style>
+  html, body { margin: 0; background: #d9d4ca; font-family: Georgia, serif; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 12px; }
+  canvas { max-width: 100%; height: auto; box-shadow: 0 6px 30px rgba(0,0,0,.25); background: #f6f3ec; }
+  .bar { display: flex; gap: 12px; align-items: center; color: #333; }
+  button { font: inherit; padding: 6px 14px; border: 1px solid #555; background: #f6f3ec; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="900" height="1200"></canvas>
+<div class="bar">
+  <button id="again">Redessiner</button>
+  <span id="status">Rendu en cours…</span>
+</div>
+<script>
+/*
+ * Portrait d'homme au crayon, entièrement procédural.
+ * 1. Un visage 3D est modélisé par des fonctions de distance signée (SDF).
+ * 2. On le « photographie » par raymarching : éclairage, ombres portées, occlusion.
+ * 3. La carte de valeurs obtenue est traduite en graphite : estompe granuleuse,
+ *    couches de hachures, mèches de cheveux, contours esquissés.
+ */
+const W = 900, H = 1200;           // taille du dessin
+const RW = 450, RH = 600;          // résolution du rendu 3D
+const SC = W / RW;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+
+// ---------- utilitaires ----------
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const mix = (a, b, t) => a + (b - a) * t;
+const smooth = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rand = Math.random;
+
+function hash2(x, y) {
+  let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return mix(mix(a, b, u), mix(c, d, u), v);
+}
+function fbm(x, y, oct) {
+  let s = 0, a = 0.5, f = 1;
+  for (let i = 0; i < oct; i++) { s += a * vnoise(x * f, y * f); f *= 2.03; a *= 0.5; }
+  return s / (1 - Math.pow(0.5, oct));
+}
+
+// ---------- modèle 3D (SDF) ----------
+function sdEll(x, y, z, rx, ry, rz) {
+  const ax = x / rx, ay = y / ry, az = z / rz;
+  const bx = ax / rx, by = ay / ry, bz = az / rz;
+  const k0 = Math.sqrt(ax * ax + ay * ay + az * az);
+  const k1 = Math.sqrt(bx * bx + by * by + bz * bz);
+  return k0 * (k0 - 1) / k1;
+}
+function sdSph(x, y, z, r) { return Math.sqrt(x * x + y * y + z * z) - r; }
+function sdCap(px, py, pz, ax, ay, az, bx, by, bz, r) {
+  const pax = px - ax, pay = py - ay, paz = pz - az;
+  const bax = bx - ax, bay = by - ay, baz = bz - az;
+  const h = clamp((pax * bax + pay * bay + paz * baz) / (bax * bax + bay * bay + baz * baz), 0, 1);
+  const dx = pax - bax * h, dy = pay - bay * h, dz = paz - baz * h;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) - r;
+}
+function smin(a, b, k) { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; }
+function smax(a, b, k) { return -smin(-a, -b, k); }
+
+// pose de la tête : légèrement tournée vers la gauche, un peu inclinée
+const YAW = -0.42, PITCH = 0.06, ROLL = 0.04, PIV_Y = -0.55;
+const cY = Math.cos(YAW), sY = Math.sin(YAW), cP = Math.cos(PITCH), sP = Math.sin(PITCH), cR = Math.cos(ROLL), sR = Math.sin(ROLL);
+// monde -> repère local de la tête (dans L_*)
+let Lx = 0, Ly = 0, Lz = 0;
+function toLocal(x, y, z) {
+  let hx = x, hy = y - PIV_Y, hz = z;
+  // yaw inverse
+  let ax = cY * hx - sY * hz, az = sY * hx + cY * hz, ay = hy;
+  // pitch inverse (autour de x)
+  let by = cP * ay + sP * az, bz = -sP * ay + cP * az;
+  // roll inverse (autour de z)
+  let cx = cR * ax + sR * by, cy = -sR * ax + cR * by;
+  Lx = cx; Ly = cy + PIV_Y; Lz = bz;
+}
+function toWorldDir(x, y, z) {
+  // inverse de toLocal pour une direction
+  let ax = cR * x - sR * y, ay = sR * x + cR * y;
+  let by = cP * ay - sP * z, bz = sP * ay + cP * z;
+  return [cY * ax + sY * bz, by, -sY * ax + cY * bz];
+}
+
+const EYE_X = 0.265, EYE_Y = 0.1, EYE_Z = 0.6, EYE_R = 0.135;
+let MAT = 0;   // 1 peau, 2 cheveux, 3 oeil, 7 vêtement
+
+function head(x, y, z, wantMat) {
+  const q = Math.abs(x);
+  // crâne + visage
+  let d = sdEll(x, y - 0.2, z + 0.06, 0.72, 0.88, 0.86);
+  d = smin(d, sdEll(x, y + 0.28, z - 0.1, 0.55, 0.62, 0.66), 0.25);
+  // mâchoire et menton
+  d = smin(d, sdCap(q, y, z, 0.4, -0.33, -0.02, 0.1, -0.8, 0.34, 0.115), 0.22);
+  d = smin(d, sdEll(x, y + 0.84, z - 0.4, 0.22, 0.15, 0.15), 0.12);
+  // pommettes
+  d = smin(d, sdSph(q - 0.37, y + 0.04, z - 0.5, 0.17), 0.16);
+  // arcades sourcilières
+  d = smin(d, sdCap(q, y, z, 0.0, 0.29, 0.77, 0.4, 0.31, 0.64, 0.075), 0.13);
+  // tempes légèrement creusées
+  d = smax(d, -sdSph(q - 0.72, y - 0.25, z - 0.35, 0.13), 0.12);
+  // orbites
+  d = smax(d, -sdSph(q - EYE_X, y - EYE_Y, z - 0.79, 0.165), 0.09);
+  // nez
+  d = smin(d, sdCap(x, y, z, 0, 0.18, 0.78, 0, -0.18, 0.99, 0.058), 0.08);
+  d = smin(d, sdSph(x, y + 0.2, z - 0.95, 0.076), 0.05);
+  d = smin(d, sdSph(q - 0.082, y + 0.255, z - 0.855, 0.055), 0.04);
+  d = smax(d, -sdEll(q - 0.05, y + 0.305, z - 0.905, 0.028, 0.018, 0.03), 0.015);
+  // museau, lèvres, bouche
+  d = smin(d, sdEll(x, y + 0.46, z - 0.6, 0.3, 0.22, 0.25), 0.1);
+  d = smin(d, sdCap(q, y, z, 0.0, -0.44, 0.83, 0.17, -0.465, 0.75, 0.042), 0.03);
+  d = smin(d, sdCap(q, y, z, 0.0, -0.535, 0.8, 0.13, -0.515, 0.74, 0.05), 0.03);
+  d = smax(d, -sdCap(q, y, z, 0.0, -0.488, 0.92, 0.2, -0.482, 0.79, 0.007), 0.012);
+  // pli sous la lèvre
+  d = smax(d, -sdCap(q, y, z, 0.0, -0.64, 0.84, 0.1, -0.63, 0.8, 0.02), 0.04);
+  // oreilles
+  d = smin(d, sdEll(q - 0.75, y - 0.02, z + 0.06, 0.08, 0.21, 0.13), 0.06);
+  d = smax(d, -sdEll(q - 0.81, y - 0.02, z + 0.04, 0.04, 0.13, 0.08), 0.02);
+
+  // paupières
+  const ex = q - EYE_X, ey = y - EYE_Y, ez = z - EYE_Z;
+  let lid = sdSph(ex, ey, ez, EYE_R + 0.018);
+  const ox = q - EYE_X - 0.01;
+  const upper = Math.max(lid, -(ey - 0.042 + 1.6 * ox * ox - 0.15 * ox));
+  const lower = Math.max(lid, ey + 0.05 - 1.1 * ox * ox + 0.08 * ox);
+  d = smin(d, Math.min(upper, lower), 0.03);
+  // globe oculaire
+  const eye = sdSph(ex, ey, ez, EYE_R);
+
+  // cheveux : calotte légèrement plus grande, au-dessus d'une ligne d'implantation
+  let hair = sdEll(x, y - 0.3, z + 0.1, 0.77, 0.86, 0.9);
+  hair = smin(hair, sdEll(x + 0.1, y - 0.62, z - 0.18, 0.55, 0.32, 0.5), 0.2); // volume sur le dessus
+  // ligne d'implantation : golfes aux tempes, pattes devant les oreilles
+  const hl = 0.57 + 0.09 * smooth(0.12, 0.34, q) * smooth(0.25, 0.6, z) - 0.62 * smooth(0.42, -0.25, z) - 0.04 * Math.sin(x * 9) + 0.03 * Math.sin(x * 23 + z * 7);
+  hair = smax(hair, hl - y, 0.05);
+  hair = smax(hair, -(sdEll(q - 0.7, y + 0.04, z + 0.06, 0.16, 0.26, 0.19)), 0.05); // dégage les oreilles
+  hair += 0.006 * Math.sin(x * 21 + y * 7) * Math.sin(z * 17 - y * 11);
+
+  let r = Math.min(d, eye, hair);
+  if (wantMat) {
+    if (r === eye) MAT = 3; else if (r === hair) MAT = 2; else MAT = 1;
+  }
+  return r;
+}
+
+function map(x, y, z, wantMat) {
+  toLocal(x, y, z);
+  let h = head(Lx, Ly, Lz, wantMat);
+  const hm = MAT;
+  // cou
+  let neck = sdCap(x, y, z, 0, -0.5, -0.12, 0, -1.7, -0.05, 0.4);
+  neck = smin(neck, sdCap(Math.abs(x), y, z, 0.12, -0.75, 0.02, 0.04, -1.45, 0.12, 0.09), 0.15); // sterno-cléido
+  // épaules et buste
+  let body = sdCap(Math.abs(x), y, z, 0.2, -1.45, -0.15, 1.35, -1.85, -0.2, 0.3);
+  body = smin(body, sdEll(x, y + 2.6, z + 0.12, 1.55, 1.0, 0.62), 0.45);
+  let nb = smin(neck, body, 0.35);
+  let r = smin(h, nb, 0.12);
+  if (wantMat) {
+    if (h < nb) MAT = hm;
+    else {
+      // col en V du t-shirt
+      const collar = -1.35 - 0.38 * Math.max(0, 1 - Math.abs(x) / 0.42);
+      MAT = y < collar ? 7 : 1;
+    }
+  }
+  return r;
+}
+
+// ---------- rendu 3D ----------
+const CAM = [0, -0.72, 7.2];
+const FOVY = 4.25;         // hauteur visible au plan z=0
+const LIGHT = (() => { const l = [-0.4, 0.55, 0.74]; const n = Math.hypot(...l); return l.map(v => v / n); })();
+
+function normal(x, y, z) {
+  const e = 0.0015;
+  const a = map(x + e, y - e, z - e), b = map(x - e, y - e, z + e), c = map(x - e, y + e, z - e), d = map(x + e, y + e, z + e);
+  let nx = a - b - c + d, ny = -a - b + c + d, nz = -a + b - c + d;
+  const l = Math.sqrt(nx * nx + ny * ny + nz * nz);
+  return [nx / l, ny / l, nz / l];
+}
+function softShadow(x, y, z) {
+  let res = 1, t = 0.02;
+  for (let i = 0; i < 28 && t < 3; i++) {
+    const h = map(x + LIGHT[0] * t, y + LIGHT[1] * t, z + LIGHT[2] * t);
+    res = Math.min(res, 9 * h / t);
+    if (res < 0.001) return 0;
+    t += clamp(h, 0.015, 0.25);
+  }
+  return clamp(res, 0, 1);
+}
+function ambOcc(x, y, z, n) {
+  let o = 0, s = 1;
+  for (let i = 1; i <= 5; i++) {
+    const h = 0.02 + 0.07 * i;
+    const d = map(x + n[0] * h, y + n[1] * h, z + n[2] * h);
+    o += (h - d) * s; s *= 0.7;
+  }
+  return clamp(1 - 2.2 * o, 0, 1);
+}
+
+// buffers
+const TONE = new Float32Array(RW * RH);
+const MATB = new Uint8Array(RW * RH);
+const DEPTH = new Float32Array(RW * RH);
+const NX = new Float32Array(RW * RH), NY = new Float32Array(RW * RH), NZ = new Float32Array(RW * RH);
+
+const gazeW = (() => { const g = [0.04, 0.02, 1]; const l = Math.hypot(...g); return g.map(v => v / l); })();
+// regard exprimé dans le repère local
+const gazeL = (() => {
+  const g = gazeW; let hx = g[0], hy = g[1], hz = g[2];
+  let ax = cY * hx - sY * hz, az = sY * hx + cY * hz, ay = hy;
+  let by = cP * ay + sP * az, bz = -sP * ay + cP * az;
+  let cx = cR * ax + sR * by, cy = -sR * ax + cR * by;
+  return [cx, cy, bz];
+})();
+
+function shadePixel(i, j) {
+  const idx = j * RW + i;
+  const sx = ((i + 0.5) / RW - 0.5) * FOVY * (RW / RH);
+  const sy = (0.5 - (j + 0.5) / RH) * FOVY;
+  let dx = sx - CAM[0] * 0, dy = sy - 0, dz = -CAM[2];
+  const dl = Math.sqrt(dx * dx + dy * dy + dz * dz); dx /= dl; dy /= dl; dz /= dl;
+  const ox = CAM[0], oy = CAM[1], oz = CAM[2];
+  let t = 4.5, hit = false;
+  for (let k = 0; k < 140; k++) {
+    const d = map(ox + dx * t, oy + dy * t, oz + dz * t);
+    if (d < 0.0008 * t) { hit = true; break; }
+    t += d * 0.9;
+    if (t > 10) break;
+  }
+  if (!hit) { TONE[idx] = 0; MATB[idx] = 0; DEPTH[idx] = 10; return; }
+  const px = ox + dx * t, py = oy + dy * t, pz = oz + dz * t;
+  map(px, py, pz, true);
+  let mat = MAT;
+  const n = normal(px, py, pz);
+  const sh = softShadow(px + n[0] * 0.01, py + n[1] * 0.01, pz + n[2] * 0.01);
+  const ao = ambOcc(px, py, pz, n);
+  const ndl = n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2];
+  const diff = Math.max(0, ndl);
+  const wrap = Math.max(0, (ndl + 0.35) / 1.35);
+  const bounce = Math.max(0, n[0] * 0.8 - n[1] * 0.2 + n[2] * 0.4) * 0.2; // lumière réfléchie côté ombre
+  const rim = Math.pow(1 - Math.max(0, -dz * -1 * 0 + n[2]), 3) * 0.06;
+  let lum = 0.75 * diff * sh + 0.16 * wrap + bounce * ao + rim + 0.06;
+  lum *= 0.45 + 0.55 * ao;
+  let T = 1 - clamp(lum, 0, 1);
+  T = Math.pow(T, 1.25);
+
+  toLocal(px, py, pz);
+  const lx = Lx, ly = Ly, lz = Lz, q = Math.abs(lx);
+  if (mat === 1) {
+    // sourcils
+    const u = (q - 0.1) / 0.36;
+    if (u > 0 && u < 1 && lz > 0.4) {
+      const yb = 0.285 + 0.055 * Math.sin(u * 2.6) - 0.02 * u;
+      const th = 0.042 * (1 - 0.5 * u);
+      const b = (1 - smooth(th * 0.3, th * 1.1, Math.abs(ly - yb))) * smooth(0, 0.15, u) * smooth(1, 0.8, u);
+      if (b > 0.05) { T = Math.min(1, Math.max(T, 0.25) + 0.55 * b * (0.7 + 0.3 * vnoise(lx * 90, ly * 90))); if (b > 0.25) mat = 5; }
+    }
+    // lèvre supérieure un peu plus sombre (tournée vers le bas)
+    const lipU = smooth(-0.43, -0.45, ly) * smooth(-0.5, -0.48, ly) * smooth(0.19, 0.12, q);
+    if (lz > 0.6) T = Math.min(1, T + 0.12 * lipU);
+    // commissure / ligne de bouche
+    const ml = 1 - smooth(0.004, 0.016, Math.abs(ly + 0.486 - 0.1 * q * q));
+    if (lz > 0.55 && q < 0.2) T = Math.min(1, T + 0.55 * ml * smooth(0.2, 0.12, q));
+    // barbe de trois jours
+    const beard = smooth(-0.3, -0.5, ly) * smooth(0.75, 0.55, q + 0.0) * (lz > -0.3 ? 1 : 0);
+    const mouthGap = 1 - (1 - smooth(0.06, 0.12, Math.abs(ly + 0.49))) * smooth(0.25, 0.18, q);
+    if (beard > 0 && ly > -1.0 && lz > -0.2) T = Math.min(1, T + 0.07 * beard * mouthGap * (0.5 + vnoise(lx * 60, ly * 60)));
+  } else if (mat === 2) {
+    const streak = vnoise(lx * 9 + 3, lz * 9 + ly * 4) * 0.6 + vnoise(lx * 30 + ly * 10, lz * 30) * 0.4;
+    T = clamp(0.35 + 0.62 * T + 0.3 * (streak - 0.5), 0, 1);
+    // reflet brillant
+    const hvx = LIGHT[0], hvy = LIGHT[1], hvz = LIGHT[2] + 1; const hl = Math.hypot(hvx, hvy, hvz);
+    const spec = Math.pow(Math.max(0, (n[0] * hvx + n[1] * hvy + n[2] * hvz) / hl), 12) * sh;
+    T = clamp(T - 0.25 * spec * streak, 0, 1);
+  } else if (mat === 3) {
+    // oeil : sclère, iris, pupille, reflet
+    const ex = (lx < 0 ? -1 : 1);
+    let vx = lx - ex * EYE_X, vy = ly - EYE_Y, vz = lz - EYE_Z;
+    const vl = Math.hypot(vx, vy, vz); vx /= vl; vy /= vl; vz /= vl;
+    const g = vx * gazeL[0] + vy * gazeL[1] + vz * gazeL[2];
+    T = 0.12 + 0.55 * T;
+    if (g > 0.905) {
+      const rr = (1 - g) / (1 - 0.905); // 0 centre -> 1 bord de l'iris
+      const fib = vnoise(Math.atan2(vy, vx) * 12, rr * 3);
+      T = 0.55 + 0.3 * rr * rr + 0.12 * fib;
+      if (g > 0.978) T = 0.97;
+      T = clamp(T + 0.1 * (1 - sh), 0, 1);
+    }
+    const hvx = LIGHT[0], hvy = LIGHT[1], hvz = LIGHT[2] + 1; const hl = Math.hypot(hvx, hvy, hvz);
+    const spec = (n[0] * hvx + n[1] * hvy + n[2] * hvz) / hl;
+    if (spec > 0.985 && sh > 0.3) T = 0;
+    mat = 3;
+  } else if (mat === 7) {
+    T = clamp(0.05 + 0.6 * T, 0, 1);
+  }
+  TONE[idx] = T; MATB[idx] = mat; DEPTH[idx] = t;
+  NX[idx] = n[0]; NY[idx] = n[1]; NZ[idx] = n[2];
+}
+function y_isHead(py) { return py > -1.45; }
+
+// ---------- dessin ----------
+const PAPER = [246, 243, 236];
+const GRAPH = [40, 40, 46];
+
+function toneAt(x, y) {
+  const fx = x / SC - 0.5, fy = y / SC - 0.5;
+  const i = Math.floor(fx), j = Math.floor(fy);
+  if (i < 0 || j < 0 || i >= RW - 1 || j >= RH - 1) return 0;
+  const u = fx - i, v = fy - j, k = j * RW + i;
+  return mix(mix(TONE[k], TONE[k + 1], u), mix(TONE[k + RW], TONE[k + RW + 1], u), v);
+}
+function matAt(x, y) {
+  const i = clamp(Math.round(x / SC - 0.5), 0, RW - 1), j = clamp(Math.round(y / SC - 0.5), 0, RH - 1);
+  return MATB[j * RW + i];
+}
+
+// fond : quelques valeurs derrière la tête, côté lumière, pour détacher le profil ; fondu en bas
+function finalizeTone() {
+  for (let j = 0; j < RH; j++) for (let i = 0; i < RW; i++) {
+    const k = j * RW + i;
+    const x = i / RW, y = j / RH;
+    const n = fbm(x * 5, y * 5, 4);
+    if (MATB[k] === 0) {
+      const blob = smooth(0.42, 0.1, Math.hypot((x - 0.22) * 1.3, (y - 0.32) * 0.75) + 0.25 * (n - 0.5));
+      TONE[k] = 0.2 * blob * smooth(0.02, 0.2, x);
+    }
+    const fade = 1 - smooth(0.7, 0.95, y + 0.12 * (n - 0.5));
+    const side = smooth(0.0, 0.06, x) * smooth(1.0, 0.94, x);
+    TONE[k] *= fade * side;
+  }
+}
+
+function paperGrain(x, y) {
+  // grain du papier : fibres + dents
+  const a = vnoise(x * 0.9, y * 0.9);
+  const b = vnoise(x * 0.35 + 100, y * 0.12);
+  const c = vnoise(x * 0.08, y * 0.08);
+  return clamp(0.5 * a + 0.3 * b + 0.2 * c, 0, 1);
+}
+
+function drawBase() {
+  const img = ctx.createImageData(W, H);
+  const dat = img.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const t = toneAt(x, y);
+    const g = paperGrain(x, y);
+    const blot = 0.85 + 0.3 * vnoise(x * 0.02 + 7, y * 0.02);   // estompe irrégulière
+    let dk = Math.pow(t, 1.1) * 0.8 * blot * (0.45 + 0.55 * g);
+    dk = clamp(dk, 0, 0.95);
+    const pv = 1 - 0.035 * (1 - g);                              // relief léger du papier
+    const o = (y * W + x) * 4;
+    dat[o] = mix(PAPER[0] * pv, GRAPH[0], dk);
+    dat[o + 1] = mix(PAPER[1] * pv, GRAPH[1], dk);
+    dat[o + 2] = mix(PAPER[2] * pv, GRAPH[2], dk);
+    dat[o + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function pencilStroke(x, y, ang, len, thr, alpha, width, curl, matOnly) {
+  const step = 2.5;
+  const steps = Math.max(2, Math.round(len / step));
+  if (matOnly && !matOnly.includes(matAt(x, y))) return;
+  ctx.lineWidth = width;
+  let a = ang;
+  for (let s = 0; s < steps; s++) {
+    const nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+    const t = toneAt(nx, ny);
+    if (t < thr - 0.02) break;
+    if (matOnly && !matOnly.includes(matAt(nx, ny))) break;
+    const u = (s + 0.5) / steps;
+    const taper = Math.pow(Math.sin(Math.PI * u), 0.7);
+    const g = paperGrain(nx, ny);
+    ctx.globalAlpha = alpha * taper * clamp((t - thr) * 3 + 0.35, 0, 1) * (0.55 + 0.6 * g);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(nx, ny); ctx.stroke();
+    x = nx; y = ny; a += curl;
+  }
+}
+
+const SKIN = [1, 3, 5, 6];
+function drawHatching() {
+  ctx.strokeStyle = `rgb(${GRAPH})`;
+  ctx.lineCap = 'round';
+  const layers = [
+    { thr: 0.10, ang: -1.05, n: 26000, len: [16, 34], a: 0.16, w: 0.8 },
+    { thr: 0.30, ang: -0.62, n: 24000, len: [14, 30], a: 0.18, w: 0.8 },
+    { thr: 0.50, ang: -1.35, n: 22000, len: [12, 26], a: 0.20, w: 0.9 },
+    { thr: 0.68, ang: -0.25, n: 20000, len: [10, 22], a: 0.22, w: 1.0 },
+    { thr: 0.82, ang: -0.9,  n: 16000, len: [8, 18],  a: 0.26, w: 1.1 },
+  ];
+  for (const L of layers) {
+    for (let k = 0; k < L.n; k++) {
+      const x = rand() * W, y = rand() * H;
+      const t = toneAt(x, y);
+      if (t < L.thr + rand() * 0.06) continue;
+      const m = matAt(x, y);
+      if (m === 2) continue;                 // cheveux : traités à part
+      const len = mix(L.len[0], L.len[1], rand());
+      const group = m === 0 ? [0] : m === 7 ? [7] : SKIN;   // un trait ne déborde pas d'une matière à l'autre
+      pencilStroke(x, y, L.ang + (rand() - 0.5) * 0.12, len, L.thr, L.a * 0.8, L.w * (0.8 + 0.4 * rand()), (rand() - 0.5) * 0.02, group);
+    }
+  }
+}
+
+function project(lx, ly, lz) {
+  // local tête -> monde -> écran (pixels du dessin)
+  let v = toWorldDir(lx, ly - PIV_Y, lz);
+  const x = v[0], y = v[1] + PIV_Y, z = v[2];
+  const k = (CAM[2]) / (CAM[2] - z);
+  const sx = (x - CAM[0]) * k + CAM[0] * 0;
+  const sy = (y - CAM[1]) * k;
+  const px = (sx / (FOVY * (RW / RH)) + 0.5) * W;
+  const py = (0.5 - sy / FOVY) * H;
+  return [px, py];
+}
+
+function drawHair() {
+  ctx.strokeStyle = `rgb(${GRAPH})`;
+  // sommet (épi) et direction du peigné : raie sur le côté
+  const front = project(-0.1, 0.2, 1.3);
+  for (let k = 0; k < 30000; k++) {
+    const x = rand() * W, y = rand() * H;
+    if (matAt(x, y) !== 2) continue;
+    const t = toneAt(x, y);
+    if (t < 0.2 + rand() * 0.3) continue;
+    // direction : s'éloigne du sommet, balayée vers l'arrière depuis la raie
+    // coiffés vers l'arrière : les mèches partent du front et fuient vers la nuque
+    let ang = Math.atan2(y - front[1], x - front[0]);
+    ang += (vnoise(x * 0.015, y * 0.015) - 0.5) * 0.7 + (rand() - 0.5) * 0.15;
+    const len = 25 + 50 * rand();
+    pencilStroke(x, y, ang, len, 0.15, 0.2 + 0.25 * t, 0.6 + 0.6 * rand(), (rand() - 0.5) * 0.06, [2]);
+  }
+}
+
+function drawBrows() {
+  ctx.strokeStyle = `rgb(${GRAPH})`;
+  for (let k = 0; k < 14000; k++) {
+    const x = rand() * W, y = rand() * H;
+    if (matAt(x, y) !== 5) continue;
+    // poils : de l'intérieur vers l'extérieur, en montant puis en descendant
+    const leftSide = x < project(0, 0.3, 0.8)[0];
+    const inner = project(leftSide ? -0.1 : 0.1, 0.28, 0.75);
+    const far = Math.abs(x - inner[0]) / 70;
+    let ang = leftSide ? Math.PI + 0.5 - 0.6 * far : -0.5 + 0.6 * far;
+    pencilStroke(x, y, ang + (rand() - 0.5) * 0.3, 6 + 9 * rand(), 0.2, 0.55, 0.9, 0, [5, 1]);
+  }
+}
+
+function drawStubble() {
+  ctx.fillStyle = `rgb(${GRAPH})`;
+  for (let k = 0; k < 40000; k++) {
+    const x = rand() * W, y = rand() * H;
+    if (matAt(x, y) !== 1) continue;
+    const i = clamp(Math.round(x / SC), 0, RW - 1), j = clamp(Math.round(y / SC), 0, RH - 1);
+    // retrouve la position locale approximative via le ton : on s'appuie sur la zone de la barbe (tons ajoutés)
+    toLocalFromScreen(i, j);
+    if (!LOK) continue;
+    const beard = smooth(-0.32, -0.5, Ly) * smooth(0.72, 0.5, Math.abs(Lx));
+    const mouth = Math.abs(Ly + 0.49) < 0.09 && Math.abs(Lx) < 0.22;
+    if (beard < rand() || mouth) continue;
+    ctx.globalAlpha = 0.25 + 0.3 * rand();
+    ctx.fillRect(x, y, 1, 1 + rand());
+  }
+}
+let LOK = false;
+function toLocalFromScreen(i, j) {
+  const k = j * RW + i;
+  const t = DEPTH[k];
+  if (t >= 10) { LOK = false; return; }
+  const sx = ((i + 0.5) / RW - 0.5) * FOVY * (RW / RH);
+  const sy = (0.5 - (j + 0.5) / RH) * FOVY;
+  let dx = sx, dy = sy, dz = -CAM[2];
+  const dl = Math.hypot(dx, dy, dz);
+  const px = CAM[0] + dx / dl * t, py = CAM[1] + dy / dl * t, pz = CAM[2] + dz / dl * t;
+  toLocal(px, py, pz);
+  LOK = py > -1.3;
+}
+
+function drawContours() {
+  // intensité de bord : silhouette, rupture de profondeur, pli, changement de matière
+  const E = new Float32Array(RW * RH);
+  for (let j = 1; j < RH - 1; j++) for (let i = 1; i < RW - 1; i++) {
+    const k = j * RW + i;
+    let e = 0;
+    const nb = [k - 1, k + 1, k - RW, k + RW];
+    for (const m of nb) {
+      const dd = Math.abs(DEPTH[k] - DEPTH[m]);
+      if (dd > 0.06) e = Math.max(e, DEPTH[k] < DEPTH[m] ? 1 : 0.0);
+      if (MATB[k] && MATB[m]) {
+        const dot = NX[k] * NX[m] + NY[k] * NY[m] + NZ[k] * NZ[m];
+        e = Math.max(e, clamp((0.97 - dot) * 6, 0, 0.8));
+        if (MATB[k] !== MATB[m]) {
+          const pair = MATB[k] * MATB[m];
+          if (pair === 3) e = Math.max(e, 0.9);          // bord de l'oeil
+          else if (pair === 2) e = Math.max(e, 0.35);    // cheveux / peau
+          else if (pair === 7) e = Math.max(e, 0.6);     // col
+        }
+      }
+    }
+    E[k] = e;
+  }
+  ctx.strokeStyle = `rgb(${GRAPH})`;
+  const pts = [];
+  for (let j = 2; j < RH - 2; j++) for (let i = 2; i < RW - 2; i++) if (E[j * RW + i] > 0.2) pts.push(j * RW + i);
+  for (let pass = 0; pass < 3; pass++) {
+    for (const k of pts) {
+      if (rand() > 0.35) continue;
+      const i = k % RW, j = (k / RW) | 0;
+      // orientation par tenseur de structure
+      let sxx = 0, syy = 0, sxy = 0;
+      for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) {
+        const m = (j + b) * RW + i + a;
+        const gx = E[m + 1] - E[m - 1], gy = E[m + RW] - E[m - RW];
+        sxx += gx * gx; syy += gy * gy; sxy += gx * gy;
+      }
+      const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy) + Math.PI / 2;
+      const x = (i + 0.5) * SC + (rand() - 0.5) * 2, y = (j + 0.5) * SC + (rand() - 0.5) * 2;
+      const fade = toneFade(x, y);
+      const len = 5 + 8 * rand();
+      const ca = Math.cos(theta) * len / 2, sa = Math.sin(theta) * len / 2;
+      ctx.globalAlpha = (0.1 + 0.26 * E[k]) * fade * (pass === 0 ? 1 : 0.6) * (0.35 + 0.9 * toneAt(x + 4, y));
+      ctx.lineWidth = 0.6 + 0.8 * E[k] * rand();
+      ctx.beginPath(); ctx.moveTo(x - ca, y - sa); ctx.lineTo(x + ca, y + sa); ctx.stroke();
+    }
+  }
+}
+function toneFade(x, y) {
+  const yy = y / H, xx = x / W;
+  const n = fbm(xx * 5, yy * 5, 3);
+  return (1 - smooth(0.68, 0.93, yy + 0.12 * (n - 0.5)));
+}
+
+function drawEraser() {
+  // coups de gomme : reflets dans les yeux et sur le front/nez
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = `rgb(${PAPER})`;
+  for (let j = 0; j < RH; j++) for (let i = 0; i < RW; i++) {
+    const k = j * RW + i;
+    if (MATB[k] === 3 && TONE[k] === 0) {
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.arc((i + 0.5) * SC, (j + 0.5) * SC, 1.8, 0, 7); ctx.fill();
+    }
+  }
+}
+
+function vignette() {
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.8);
+  g.addColorStop(0, 'rgba(120,110,90,0)');
+  g.addColorStop(1, 'rgba(120,110,90,0.14)');
+  ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+// ---------- orchestration ----------
+function nextFrame() { return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); }
+
+async function render(seed) {
+  rand = mulberry32(seed);
+  window.done = false;
+  ctx.globalAlpha = 1; ctx.fillStyle = `rgb(${PAPER})`; ctx.fillRect(0, 0, W, H);
+  const t0 = performance.now();
+  for (let j = 0; j < RH; j++) {
+    for (let i = 0; i < RW; i++) shadePixel(i, j);
+    if (j % 20 === 19) { statusEl.textContent = `Modélisation du visage… ${Math.round(100 * j / RH)} %`; await nextFrame(); }
+  }
+  finalizeTone();
+  statusEl.textContent = 'Estompe…'; await nextFrame();
+  drawBase();
+  statusEl.textContent = 'Hachures…'; await nextFrame();
+  drawHatching();
+  drawHair();
+  drawBrows();
+  drawContours();
+  drawEraser();
+  vignette();
+  ctx.globalAlpha = 1;
+  statusEl.textContent = `Terminé en ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  window.done = true;
+}
+
+document.getElementById('again').onclick = () => render((Math.random() * 1e9) | 0);
+render(20260926);
+</script>
+</body>
+</html>
