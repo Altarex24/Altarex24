@@ -1,6 +1,11 @@
 --[[
 	GÉNÉRATEUR DE SHOP GUI - Roblox Studio
-	Utilisation : View > Command Bar, colle TOUT ce script, puis Entrée.
+	UTILISATION (la Command Bar coupe les longs collages, donc on passe par un ModuleScript) :
+	  1. Dans l'Explorer : ServerStorage > Insert Object > ModuleScript, renomme-le "ShopGenerator".
+	  2. Ouvre-le, efface tout, colle CE fichier en entier, ferme l'onglet.
+	  3. View > Command Bar, colle cette seule ligne puis Entrée :
+	       require(game.ServerStorage.ShopGenerator:Clone())
+	  4. Tu peux ensuite supprimer ShopGenerator (ou le garder pour régénérer plus tard).
 
 	Crée :
 	  - StarterGui.ShopGui              (bouton SHOP + fenêtre du shop + LocalScript "ShopClient")
@@ -588,3 +593,5 @@ gui.Parent = StarterGui
 ChangeHistoryService:SetWaypoint("ShopGui généré")
 Selection:Set({ gui })
 print("✅ ShopGui généré ! (StarterGui > ShopGui). Ajoute tes articles dans ReplicatedStorage > ShopItems.")
+
+return true
