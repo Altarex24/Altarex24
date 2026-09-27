@@ -24,11 +24,15 @@ STRAW_D = (184, 146, 62)
 BAND = (120, 70, 36)
 
 
-def build():
-    body = Part(seed=1)
-    # Jambes (visibles sous la robe) avec chaussures plus sombres
-    for x0 in (0, 4):
-        body.box(x0, x0 + 4, 0, 6, 1, 5, lambda x, y, z: (40, 34, 30) if y < 2 else PANTS)
+def build_rig():
+    """Pièces articulées du villageois (nom -> Part, pivot compris), sans pose."""
+    rig = {}
+    # Jambes (visibles sous la robe), chaussures plus sombres ; pivot sous la robe
+    for name, x0, seed in (("leg_l", 0, 1), ("leg_r", 4, 2)):
+        leg = Part(seed=seed, pivot=(x0 + 2, 6, 3))
+        leg.box(x0, x0 + 4, 0, 6, 1, 5, lambda x, y, z: (40, 34, 30) if y < 2 else PANTS)
+        rig[name] = leg
+
     # Robe : ourlet sombre, col clair, fente centrale devant
     def robe(x, y, z):
         if y < 8:
@@ -38,9 +42,11 @@ def build():
         if z == 5 and x in (3, 4) and y < 15:
             return ROBE_D
         return ROBE
+    body = Part(seed=3)
     body.box(0, 8, 6, 24, 0, 6, robe)
+    rig["body"] = body
 
-    head = Part(seed=2)
+    head = Part(seed=4, pivot=(4, 24, 3))
     head.box(0, 8, 24, 34, -1, 7, SKIN)
     for x, c in [(1, EYE_W), (2, EYE_G), (5, EYE_G), (6, EYE_W)]:
         head.set(x, 29, 6, c)
@@ -54,13 +60,29 @@ def build():
              lambda x, y, z: BAND if y == 33 else STRAW_D if (x + z) % 3 == 0 else STRAW)
     head.box(-4, 12, 32, 33, -5, 11,
              lambda x, y, z: STRAW_D if (x * 7 + z * 3) % 5 == 0 else STRAW)
+    rig["head"] = head
 
-    # Bras croisés : pendent de l'épaule puis pivotent vers l'avant
-    arms = Part(seed=3, angle=-43, pivot=(4, 21, 4))
+    # Bras croisés : pendent de l'épaule ; la pose (~ -43°) les pivote vers l'avant
+    arms = Part(seed=5, pivot=(4, 21, 4))
     for x0 in (-4, 8):
         arms.box(x0, x0 + 4, 15, 23, 2, 6, lambda x, y, z: ROBE_D if y == 15 else ROBE)
     arms.box(0, 8, 15, 19, 2, 6, lambda x, y, z: SKIN_D if y == 15 else SKIN)
-    return [body, head, arms]
+    rig["arms_crossed"] = arms
+
+    # Bras séparés (pour se battre) : manche + main, pivot à l'épaule
+    for name, x0, seed in (("arm_l", -4, 6), ("arm_r", 8, 7)):
+        arm = Part(seed=seed, pivot=(x0 + 2, 22, 3))
+        arm.box(x0, x0 + 4, 14, 24, 1, 5, lambda x, y, z: ROBE_D if y == 14 else ROBE)
+        arm.box(x0, x0 + 4, 10, 14, 1, 5, lambda x, y, z: SKIN_D if y == 10 else SKIN)
+        rig[name] = arm
+    return rig
+
+
+def build():
+    """Pose d'inventaire : bras croisés inclinés vers l'avant."""
+    rig = build_rig()
+    rig["arms_crossed"].angle = -43
+    return [rig[k] for k in ("leg_l", "leg_r", "body", "head", "arms_crossed")]
 
 
 if __name__ == "__main__":

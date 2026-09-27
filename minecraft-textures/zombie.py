@@ -21,11 +21,14 @@ PANTS_D = (48, 46, 124)
 SHOES = (92, 92, 92)
 
 
-def build():
-    legs = Part(seed=11)
-    for x0 in (0, 4):
-        legs.box(x0, x0 + 4, 0, 12, 0, 4,
-                 lambda x, y, z: SHOES if y < 2 else PANTS_D if x in (3, 4) else PANTS)
+def build_rig():
+    """Pièces articulées du zombie (nom -> Part, pivot compris), sans pose."""
+    rig = {}
+    for name, x0, seed in (("leg_l", 0, 11), ("leg_r", 4, 16)):
+        leg = Part(seed=seed, pivot=(x0 + 2, 12, 2))
+        leg.box(x0, x0 + 4, 0, 12, 0, 4,
+                lambda x, y, z: SHOES if y < 2 else PANTS_D if x in (3, 4) else PANTS)
+        rig[name] = leg
 
     body = Part(seed=12)
     body.box(0, 8, 12, 24, 0, 4,
@@ -33,8 +36,9 @@ def build():
     body.set(3, 20, 3, body.jitter(SHIRT_D))  # déchirures du t-shirt
     body.set(5, 17, 3, body.jitter(SHIRT_D))
     body.set(2, 15, 3, body.jitter(SKIN_D))
+    rig["body"] = body
 
-    head = Part(seed=13)
+    head = Part(seed=13, pivot=(4, 24, 2))
 
     def face(x, y, z):
         if y >= 31 or (y == 30 and z < 6):
@@ -49,15 +53,23 @@ def build():
         head.set(x, 27, 5, head.jitter(SKIN_D))
     for x in range(2, 6):                      # bouche
         head.set(x, 25, 5, head.jitter(HAIR))
+    rig["head"] = head
 
-    parts = [legs, body, head]
-    # Bras tendus : pendent de l'épaule (pivot y=22) puis tournent vers l'avant
-    for x0, angle, seed in ((-4, -88, 14), (8, -78, 15)):
-        arm = Part(seed=seed, angle=angle, pivot=(0, 22, 2))
+    # Bras : pendent de l'épaule (pivot y=22) ; la pose les tourne vers l'avant
+    for name, x0, seed in (("arm_l", -4, 14), ("arm_r", 8, 15)):
+        arm = Part(seed=seed, pivot=(x0 + 2, 22, 2))
         arm.box(x0, x0 + 4, 12, 24, 0, 4,
                 lambda x, y, z: SHIRT if y >= 20 else SKIN_D if y < 13 else SKIN)
-        parts.append(arm)
-    return parts
+        rig[name] = arm
+    return rig
+
+
+def build():
+    """Pose classique : bras tendus, légèrement désynchronisés."""
+    rig = build_rig()
+    rig["arm_l"].angle = -88
+    rig["arm_r"].angle = -78
+    return list(rig.values())
 
 
 if __name__ == "__main__":
