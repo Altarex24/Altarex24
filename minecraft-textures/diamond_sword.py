@@ -34,7 +34,7 @@ def paint(grid, shapes, outline_color):
             grid[y][x] = color(x, y) if callable(color) else color
 
 
-def build():
+def build(guard_colors=("M", "D")):
     grid = [[None] * N for _ in range(N)]
 
     # --- Lame : chaque rangée y a 3 cases (clair, moyen, sombre) décalées d'un
@@ -57,7 +57,7 @@ def build():
     handle_dark = {(4, 11), (3, 12)}
     pommel = {(1, 13), (2, 13), (1, 14)}
     paint(grid, [
-        (guard, lambda x, y: "M" if x - y == -4 else "D"),
+        (guard, lambda x, y: guard_colors[0] if x - y == -4 else guard_colors[1]),
         (handle, "H"),
         (handle_dark, "h"),
         (pommel, lambda x, y: "L" if (x, y) == (1, 13) else "D"),
